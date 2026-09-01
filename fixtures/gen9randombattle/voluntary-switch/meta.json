@@ -1,0 +1,27 @@
+{
+  "caseId": "voluntary-switch",
+  "category": "natural-random-search",
+  "formatId": "gen9randombattle",
+  "showdownVersion": "0.11.11",
+  "masterSeed": 1,
+  "p1": {
+    "kind": "random",
+    "name": "p1",
+    "move": 0.5
+  },
+  "p2": {
+    "kind": "random",
+    "name": "p2",
+    "move": 0.5
+  },
+  "demonstrates": {
+    "voluntarySwitch": {
+      "turn": 1
+    }
+  },
+  "search": {
+    "strategy": "increasing-master-seed",
+    "start": 1,
+    "step": 1
+  }
+}

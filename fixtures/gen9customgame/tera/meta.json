@@ -1,0 +1,89 @@
+{
+  "caseId": "tera",
+  "category": "custom-scripted",
+  "formatId": "gen9customgame",
+  "showdownVersion": "0.11.11",
+  "masterSeed": 1,
+  "p1": {
+    "kind": "scripted",
+    "name": "p1",
+    "team": [
+      {
+        "name": "Teraburst",
+        "species": "Charizard",
+        "item": "",
+        "ability": "Blaze",
+        "moves": [
+          "Flamethrower"
+        ],
+        "nature": "Hardy",
+        "gender": "M",
+        "evs": {
+          "hp": 0,
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0
+        },
+        "ivs": {
+          "hp": 31,
+          "atk": 31,
+          "def": 31,
+          "spa": 31,
+          "spd": 31,
+          "spe": 31
+        },
+        "level": 100,
+        "teraType": "Fire"
+      }
+    ],
+    "choices": [
+      "default",
+      "move 1 terastallize"
+    ]
+  },
+  "p2": {
+    "kind": "scripted",
+    "name": "p2",
+    "team": [
+      {
+        "name": "Target",
+        "species": "Magikarp",
+        "item": "",
+        "ability": "Swift Swim",
+        "moves": [
+          "Splash"
+        ],
+        "nature": "Hardy",
+        "gender": "M",
+        "evs": {
+          "hp": 0,
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0
+        },
+        "ivs": {
+          "hp": 31,
+          "atk": 31,
+          "def": 31,
+          "spa": 31,
+          "spd": 31,
+          "spe": 31
+        },
+        "level": 1
+      }
+    ],
+    "choices": [
+      "default",
+      "move 1"
+    ]
+  },
+  "demonstrates": {
+    "terastallize": {
+      "turn": 1
+    }
+  }
+}

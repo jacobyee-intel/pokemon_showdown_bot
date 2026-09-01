@@ -1,0 +1,101 @@
+{
+  "caseId": "struggle",
+  "category": "custom-scripted",
+  "formatId": "gen9customgame",
+  "showdownVersion": "0.11.11",
+  "masterSeed": 1,
+  "p1": {
+    "kind": "scripted",
+    "name": "p1",
+    "team": [
+      {
+        "name": "Struggler",
+        "species": "Rattata",
+        "item": "",
+        "ability": "Run Away",
+        "moves": [
+          "Tackle"
+        ],
+        "nature": "Hardy",
+        "gender": "M",
+        "evs": {
+          "hp": 0,
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0
+        },
+        "ivs": {
+          "hp": 31,
+          "atk": 31,
+          "def": 31,
+          "spa": 31,
+          "spd": 31,
+          "spe": 31
+        },
+        "level": 100
+      }
+    ],
+    "choices": [
+      "default",
+      "move 1",
+      "move 1",
+      "move 1",
+      "move 1",
+      "move 1",
+      "move 1"
+    ]
+  },
+  "p2": {
+    "kind": "scripted",
+    "name": "p2",
+    "team": [
+      {
+        "name": "Wall",
+        "species": "Blissey",
+        "item": "",
+        "ability": "Natural Cure",
+        "moves": [
+          "Splash"
+        ],
+        "nature": "Hardy",
+        "gender": "M",
+        "evs": {
+          "hp": 0,
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0
+        },
+        "ivs": {
+          "hp": 31,
+          "atk": 31,
+          "def": 31,
+          "spa": 31,
+          "spd": 31,
+          "spe": 31
+        },
+        "level": 100
+      }
+    ],
+    "choices": [
+      "default",
+      "move 1",
+      "move 1",
+      "move 1",
+      "move 1",
+      "move 1",
+      "move 1"
+    ]
+  },
+  "postStartCommands": [
+    ">editbattle pp p1, 1, 1, 1"
+  ],
+  "demonstrates": {
+    "struggle": {
+      "turn": 2
+    }
+  }
+}

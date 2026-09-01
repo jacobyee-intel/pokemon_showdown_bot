@@ -9,10 +9,18 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "verify:showdown": "npm run build && node simulator/dist/verify-showdown.js",
+    "verify:seeded-battle": "npm run build && node simulator/dist/verify-seeded-battle.js",
+    "verify:scripted-error": "npm run build && node simulator/dist/verify-scripted-error.js",
+    "fixtures:capture": "npm run build && node simulator/dist/capture-fixtures.js",
+    "fixtures:verify": "npm run build && node simulator/dist/verify-fixtures.js"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "pokemon-showdown": "0.11.11"
   }
 }
