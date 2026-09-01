@@ -2,7 +2,7 @@
 
 Initial project placeholder.
 
-See [PLAN.md](PLAN.md) for the high-level roadmap,
+See [MEGAPLAN.md](MEGAPLAN.md) for the high-level roadmap,
 [plans/step-01-project-scaffold.md](plans/step-01-project-scaffold.md) for the scaffolding step,
 [plans/step-02-pin-showdown.md](plans/step-02-pin-showdown.md) for the dependency pin,
 [plans/step-03-seeded-battle.md](plans/step-03-seeded-battle.md) for the seeded battle runner, and

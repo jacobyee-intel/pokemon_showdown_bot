@@ -31,7 +31,7 @@ pokemon_showdown_bot/
 ├── tsconfig.json
 ├── pyproject.toml
 ├── README.md
-└── PLAN.md
+└── MEGAPLAN.md
 ```
 
 ## Directory Responsibilities
