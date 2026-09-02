@@ -12,7 +12,7 @@ import {
   getGen9RandomBattleFormat,
   getInstalledShowdownVersion,
   resolveRuleTable,
-} from "./showdown";
+} from "../core/showdown";
 
 function assert(condition: boolean, message: string): asserts condition {
   if (!condition) {

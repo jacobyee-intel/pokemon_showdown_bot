@@ -5,8 +5,8 @@
  * in process, and asserts that both runs are identical. No server is started
  * and no network port is opened.
  */
-import { normalizeProtocolLine } from "./protocol";
-import { runSeededBattle, type SeededBattleResult } from "./run-seeded-battle";
+import { normalizeProtocolLine } from "../core/protocol";
+import { runSeededBattle, type SeededBattleResult } from "../drivers/run-seeded-battle";
 
 /** Fixed literal master seed for this verification program. */
 const MASTER_SEED = 1;

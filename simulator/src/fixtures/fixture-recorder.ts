@@ -12,12 +12,12 @@ import * as path from "node:path";
 import {
   runBattleLifecycle,
   type BattleLifecycleOptions,
-  type ObservedStream,
+  type BattleSide,
   type PlayerLifecycleSpec,
-} from "./battle-lifecycle";
-import { normalizeProtocolLine, splitProtocolChunk } from "./protocol";
-import { deriveBattleSeeds } from "./seed";
-import { toShowdownSeed } from "./showdown";
+} from "../drivers/battle-lifecycle";
+import { normalizeProtocolLine } from "../core/protocol";
+import { deriveBattleSeeds } from "../drivers/seed";
+import { toShowdownSeed } from "../core/showdown";
 import type { FixtureCaseSpec, FixturePlayerSpec } from "./fixture-cases";
 
 /** The three files written per case, in fixed order. */
@@ -60,7 +60,8 @@ function playerLifecycleSpec(
 /** Builds the lifecycle options for a case. Seeds always come from the master seed. */
 export function toLifecycleOptions(
   caseSpec: FixtureCaseSpec,
-  onChunk?: (stream: ObservedStream, chunk: string) => void
+  onLines?: (player: BattleSide, lines: readonly string[]) => void,
+  onDebugLines?: (lines: readonly string[]) => void
 ): BattleLifecycleOptions {
   const seeds = deriveBattleSeeds(caseSpec.masterSeed);
   return {
@@ -77,7 +78,9 @@ export function toLifecycleOptions(
       toShowdownSeed(seeds.p2Agent)
     ),
     postStartCommands: caseSpec.postStartCommands,
-    onChunk,
+    battleId: caseSpec.caseId,
+    onLines,
+    onDebugLines,
   };
 }
 
@@ -146,16 +149,30 @@ export async function captureFixture(
   outputRoot: string,
   showdownVersion: string
 ): Promise<CapturedFixture> {
-  const captured: Record<ObservedStream, string[]> = { p1: [], p2: [], omniscient: [] };
+  const captured: { p1: string[]; p2: string[]; omniscient: string[] } = {
+    p1: [],
+    p2: [],
+    omniscient: [],
+  };
 
-  const onChunk = (stream: ObservedStream, chunk: string): void => {
-    for (const line of splitProtocolChunk(chunk)) {
-      captured[stream].push(normalizeProtocolLine(line));
+  // Normal, per-player protocol. Structurally incapable of carrying
+  // omniscient data: `player` is a `BattleSide`.
+  const onLines = (player: BattleSide, lines: readonly string[]): void => {
+    for (const line of lines) {
+      captured[player].push(normalizeProtocolLine(line));
+    }
+  };
+
+  // DEBUG-ONLY channel, opted into explicitly at this one named call site.
+  // This is what produces `omniscient.jsonl`.
+  const onDebugLines = (lines: readonly string[]): void => {
+    for (const line of lines) {
+      captured.omniscient.push(normalizeProtocolLine(line));
     }
   };
 
   // A rejection here propagates: no partial files are written.
-  await runBattleLifecycle(toLifecycleOptions(caseSpec, onChunk));
+  await runBattleLifecycle(toLifecycleOptions(caseSpec, onLines, onDebugLines));
 
   const files: Record<string, string> = {
     "meta.json": buildMeta(caseSpec, showdownVersion),

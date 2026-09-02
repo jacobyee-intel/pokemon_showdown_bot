@@ -10,7 +10,7 @@ import * as path from "node:path";
 import { FIXTURE_CASES } from "./fixture-cases";
 import { FIXTURES_ROOT, FIXTURES_VERIFY_SCRATCH_ROOT } from "./fixture-paths";
 import { captureFixture, FIXTURE_FILES } from "./fixture-recorder";
-import { EXPECTED_SHOWDOWN_VERSION, getInstalledShowdownVersion } from "./showdown";
+import { EXPECTED_SHOWDOWN_VERSION, getInstalledShowdownVersion } from "../core/showdown";
 
 async function readCheckedInFile(filePath: string): Promise<string | null> {
   try {

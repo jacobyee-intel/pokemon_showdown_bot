@@ -36,8 +36,10 @@ pokemon_showdown_bot/
 ├── simulator/
 │   └── src/
 │       ├── main.ts
-│       ├── showdown.ts
-│       └── verify-showdown.ts
+│       ├── core/
+│       │   └── showdown.ts
+│       └── verification/
+│           └── verify-showdown.ts
 ├── plans/
 │   └── step-02-pin-showdown.md
 ├── package.json
@@ -47,7 +49,7 @@ pokemon_showdown_bot/
 
 ## Integration Boundary
 
-All application imports from Pokemon Showdown must pass through `simulator/src/showdown.ts`. No other project file should import `pokemon-showdown` or its internal paths directly.
+All application imports from Pokemon Showdown must pass through `simulator/src/core/showdown.ts`. No other project file should import `pokemon-showdown` or its internal paths directly.
 
 The boundary should initially expose only what Step 2 needs:
 
@@ -75,7 +77,7 @@ Pokemon Showdown's published declarations depend on ambient project types that a
 
 ## Verification Program
 
-Use `simulator/src/verify-showdown.ts` as a small executable verification program. Avoid adding Jest, Vitest, or another test framework during this step.
+Use `simulator/src/verification/verify-showdown.ts` as a small executable verification program. Avoid adding Jest, Vitest, or another test framework during this step.
 
 It must fail with a nonzero exit status unless all of the following are true:
 
@@ -95,7 +97,7 @@ Add an npm script that builds the TypeScript project and runs the compiled verif
 ```json
 {
   "scripts": {
-    "verify:showdown": "npm run build && node simulator/dist/verify-showdown.js"
+    "verify:showdown": "npm run build && node simulator/dist/verification/verify-showdown.js"
   }
 }
 ```

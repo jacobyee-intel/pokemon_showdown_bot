@@ -5,7 +5,7 @@
  * metadata) must go through this module. No other project file should
  * import `pokemon-showdown` or any of its internal paths directly.
  */
-import { BattleStream, Dex, getPlayerStreams, PRNG, Teams } from "pokemon-showdown";
+import { BattleStream, Dex, getPlayerStreams, PRNG, Streams, Teams } from "pokemon-showdown";
 import showdownPackageJson from "pokemon-showdown/package.json";
 // DELIBERATE, TEMPORARY EXCEPTION: `RandomPlayerAI` is not re-exported from the
 // public `pokemon-showdown` entry point, so it is reached through an internal
@@ -108,6 +108,25 @@ export function toShowdownSeed(words: Gen5SeedWords): ShowdownPRNGSeed {
 /** Packs an authored team into Showdown's packed-team format. */
 export function packShowdownTeam(team: ShowdownPokemonSet[]): string {
   return Teams.pack(team);
+}
+
+/**
+ * Creates a standalone read/write object stream used as a bridge to a foreign
+ * player implementation (`RandomPlayerAI`), which insists on owning a stream.
+ *
+ * The bridge is not a battle stream: chunks are pushed into it by a driver and
+ * everything the player writes to it is handed to `onWrite`, which submits the
+ * raw choice through the session. It exists so no code outside
+ * `battle-session.ts` ever holds a real `getPlayerStreams` stream.
+ */
+export function createPlayerBridgeStream(
+  onWrite: (text: string) => void
+): Streams.ObjectReadWriteStream<string> {
+  return new Streams.ObjectReadWriteStream<string>({
+    write(text: string): void {
+      onWrite(text);
+    },
+  });
 }
 
 /**

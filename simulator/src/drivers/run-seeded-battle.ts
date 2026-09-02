@@ -11,7 +11,7 @@
  */
 import { runBattleLifecycle, type BattleWinner } from "./battle-lifecycle";
 import { deriveBattleSeeds } from "./seed";
-import { toShowdownSeed } from "./showdown";
+import { toShowdownSeed } from "../core/showdown";
 
 export const SEEDED_BATTLE_FORMAT_ID = "gen9randombattle";
 

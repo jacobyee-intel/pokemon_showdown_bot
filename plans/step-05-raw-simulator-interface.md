@@ -39,7 +39,7 @@ reconnect logic.
 
 ## Output Contracts
 
-New file `simulator/src/simulator-messages.ts`: types, string-literal unions,
+New file `simulator/src/core/simulator-messages.ts`: types, string-literal unions,
 and one error class. No I/O, no state, and no import from `showdown.ts` or
 `pokemon-showdown`, so a translator can depend on it without pulling in the
 simulator. It is the **single source of truth** for `BattleSide` and
@@ -115,7 +115,7 @@ onto them; inventing it now would be scaffolding with no Step 5 consumer.
 
 ## `ShowdownBattleSession`
 
-New file `simulator/src/battle-session.ts` — the only file in the project
+New file `simulator/src/core/battle-session.ts` — the only file in the project
 allowed to construct `BattleStream` or `getPlayerStreams`.
 
 ```typescript
@@ -304,7 +304,9 @@ is the right channel because the session must drain it anyway (an unread stream
 buffers without bound) and the terminal must be detectable whether or not a
 debug observer is attached. This one test is the entire extent of the session's
 protocol knowledge: it does not count turns and never retains an omniscient
-line.
+line. The unrecognized-name fault carries a fixed, content-free message: the
+offending line and the name it holds are omniscient data and never cross into
+an `ErrorOutput`.
 
 ## Output Consumption, Ordering, and Queueing
 
@@ -342,7 +344,7 @@ is delivered (for `"faulted"`, see above).
 
 ## Debug Omniscient Observer
 
-New file `simulator/src/debug-omniscient-observer.ts`. The name is deliberately
+New file `simulator/src/core/debug-omniscient-observer.ts`. The name is deliberately
 loud so `rg -l omniscient simulator/src` reads as an audit.
 
 ```typescript
@@ -413,14 +415,14 @@ edges being missed:
    at await time — attach a handler to `p1Done` and `p2Done` that records the
    first driver rejection (in `[p1, p2]` order, keeping the original `Error`
    object untouched so `verify-scripted-error.ts`'s diagnostic text survives
-   verbatim), sets the harness's `closing` flag, and calls `session.close()`.
+   verbatim) and calls `session.close()`.
    This edge is what breaks the driver-rejection deadlock: a driver that throws
    — an illegal scripted choice, a rethrown `RandomPlayerAI` error — stops
    consuming its queue and stops answering requests, so the battle would
    otherwise wait forever. Closing on rejection forces EOF, EOF produces the
-   terminal, the terminal closes both queues, and the surviving driver and the
-   dispatch loop then finish. Attaching at creation time is also what keeps a
-   late sibling rejection from surfacing as an unhandled rejection.
+   terminal, the dispatch loop finishes, and its `finally` closes both queues
+   so the surviving driver can finish. Attaching at creation time is also what
+   keeps a late sibling rejection from surfacing as an unhandled rejection.
 2. **Call `session.start(spec)`.** It is synchronous and the output queue
    buffers from construction, so no chunk produced by `start` can be missed by
    the loop entered next. An `invalid-start` therefore surfaces as an
@@ -430,8 +432,8 @@ edges being missed:
    `for await` over `session.outputs()`:
    - `ChunkOutput` → `onLines(output.player, output.lines)`, then push onto that
      side's driver queue.
-   - `ErrorOutput` → record the first one, set the `closing` flag, and call
-     `session.close()`; then **keep draining until the terminal** instead of
+   - `ErrorOutput` → record the first one and call `session.close()`; then
+     **keep draining until the terminal** instead of
      breaking out, so the remaining protocol still reaches the drivers and the
      recorder. This is a *harness* policy: the session itself still does not
      change state on an input-caused error (see "State Machine"), and a caller
@@ -462,15 +464,19 @@ edges being missed:
 
 Choices reach the session through a per-side `submitChoice` wrapper rather than
 `session.choose` directly. The wrapper swallows a `SimulatorLifecycleError`
-whose code is `input-after-end` **only** when harness-initiated closing has
-already begun (the `closing` flag, set by either the dispatch loop's
-`ErrorOutput` branch or a driver rejection handler) or the terminal has already
-been observed — the benign race where a driver computes a response just after
-the battle ended or was closed. In every other situation, and for every other
-code, it rethrows. Gating on "closing has begun" as well as "terminal observed"
-matters: without it, a driver responding in the window between `session.close()`
-and the terminal would raise a second error that masked the original
-`ErrorOutput` or driver error the harness is about to report.
+whose code is `input-after-end` **only** when the session itself is no longer
+accepting choices — `session.state !== "running"`, which covers `closing`,
+`ended`, and `closed` alike. In every other situation, and for every other
+code, it rethrows; an emitted input error such as `invalid-choice-syntax` is
+unaffected, because it is an `ErrorOutput` rather than a throw. Gating on the
+session's own public state rather than on harness-observed progress matters:
+the harness observes the terminal only after the dispatch loop has drained
+every chunk queued ahead of it, so a session can already be `ended` while an
+older queued request is still being forwarded to a driver, and a harness-local
+flag would reject that driver's answer spuriously. It also still covers the
+window between `session.close()` and the terminal, where a second error would
+otherwise mask the original `ErrorOutput` or driver error the harness is about
+to report.
 
 It returns the same `{ winner, turns, omniscientLog }`: `winner` from the
 terminal message, `turns` still the `|turn|` line count, `omniscientLog` still
@@ -580,15 +586,19 @@ the queue buffers from construction.
 
 ```text
 simulator/src/
-├── simulator-messages.ts           # NEW: output contracts, error class
-├── battle-session.ts               # NEW: ShowdownBattleSession (sole lifecycle)
-├── debug-omniscient-observer.ts    # NEW: debug-only omniscient sink
-├── random-player-driver.ts         # NEW: temporary RandomPlayerAI bridge
-├── verify-battle-session.ts        # NEW: executable verification program
-├── battle-lifecycle.ts             # MODIFIED: harness over the session
-├── scripted-player.ts              # MODIFIED: consumes SimulatorOutput
-├── fixture-recorder.ts             # MODIFIED: onLines + onDebugLines + battleId
-└── showdown.ts                     # MODIFIED: + createPlayerBridgeStream
+├── core/
+│   ├── simulator-messages.ts        # NEW: output contracts, error class
+│   ├── battle-session.ts            # NEW: ShowdownBattleSession
+│   ├── debug-omniscient-observer.ts # NEW: debug-only omniscient sink
+│   └── showdown.ts                  # MODIFIED: + player bridge stream
+├── drivers/
+│   ├── random-player-driver.ts      # NEW: temporary RandomPlayerAI bridge
+│   ├── battle-lifecycle.ts          # MODIFIED: harness over the session
+│   └── scripted-player.ts           # MODIFIED: consumes SimulatorOutput
+├── fixtures/
+│   └── fixture-recorder.ts          # MODIFIED: player/debug capture callbacks
+└── verification/
+    └── verify-battle-session.ts     # NEW: executable verification program
 ```
 
 Unchanged: `run-seeded-battle.ts`, `protocol.ts`, `seed.ts`, `fixture-cases.ts`,
@@ -596,13 +606,14 @@ Unchanged: `run-seeded-battle.ts`, `protocol.ts`, `seed.ts`, `fixture-cases.ts`,
 `verify-seeded-battle.ts`, `verify-scripted-error.ts`, `verify-showdown.ts`,
 `showdown-internal.d.ts`, `main.ts`. Also modified: `package.json` (the script
 below), `README.md` (a short "Raw Simulator Interface" section linking this
-plan), `MEGAPLAN.md` (mark Step 5 complete). No new directory, no new
-dependency, no `fixtures/` or `schemas/` change.
+plan), `MEGAPLAN.md` (mark Step 5 complete). The simulator files are grouped
+by responsibility without adding a dependency or changing `fixtures/` or
+`schemas/`.
 
 ```json
 {
   "scripts": {
-    "verify:battle-session": "npm run build && node simulator/dist/verify-battle-session.js"
+    "verify:battle-session": "npm run build && node simulator/dist/verification/verify-battle-session.js"
   }
 }
 ```
@@ -611,7 +622,7 @@ dependency, no `fixtures/` or `schemas/` change.
 
 ### New: `npm run verify:battle-session`
 
-`simulator/src/verify-battle-session.ts`, in the established style: a local
+`simulator/src/verification/verify-battle-session.ts`, in the established style: a local
 `assert`, `process.exitCode = 1` at startup set to `0` only after every awaited
 assertion completes, one success line, no test framework, no new dependency.
 Sub-cases use fixed literal seeds and the one-move authored `gen9customgame`
@@ -680,6 +691,19 @@ would report it as a failure. One assertion per distinct guarantee:
    identical, proving the observer does not perturb normal output.
 10. **Instance isolation.** Two sessions in one process each keep their own
     `battleId` and their own `seq` sequence starting at 0.
+11. **Late-choice race.** A `>forcetie` battle whose Team Preview request is
+    **answered** — the request is queued before the forced terminal, so the
+    driver's answer arrives after the session has already reached `ended` —
+    makes `runBattleLifecycle` resolve with a tie rather than reject. The
+    companion half of the same sub-case proves the swallow stayed narrow: a
+    scripted choice containing `\n` still makes the lifecycle reject with
+    `invalid-choice-syntax`.
+12. **Unrecognized winner name does not leak.** A `>forcewin` battle whose
+    winning side's configured name contains a newline emits a `|win|` line
+    matching neither name. The resulting `simulator-fault` must reach the
+    normal output carrying none of that name, no `|` protocol content, and no
+    more than the sanitized-message length bound, while the raw line still
+    reaches the debug observer.
 
 ### Regression
 
@@ -742,13 +766,13 @@ data, and can be developed with no live simulator at all.
    synchronous `closing` transition, idempotent `close()`, `writeEnd` issued
    exactly once, input errors that never change state, and exactly one terminal
    message as the final output.
-4. `npm run verify:battle-session` passes all ten assertions and exits `0`, and
+4. `npm run verify:battle-session` passes all twelve assertions and exits `0`, and
    every regression command listed above passes — in particular
    `verify:seeded-battle` with an unchanged transcript, `verify:scripted-error`
    with its file unmodified, and `fixtures:verify` reporting all six cases and
    24 files byte-identical twice in a row without `fixtures:capture` being run.
 5. All `pokemon-showdown` imports, including the temporary internal
-   `random-player-ai` path, remain confined to `simulator/src/showdown.ts` and
+   `random-player-ai` path, remain confined to `simulator/src/core/showdown.ts` and
    that exception is not widened; no new dependency and no test framework was
    added.
 6. `README.md` documents the raw simulator interface and the new command, and

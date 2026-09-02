@@ -39,7 +39,7 @@ agent interfaces.
      ordinary battles, voluntary switching, Tera, Struggle, Revival Blessing,
      and terminal ties.
 
-5. **Build the dumb raw simulator interface**
+5. **Build the dumb raw simulator interface - complete**
    - Define transport-neutral `start`, `choice`, and `close` inputs.
    - Emit channel-tagged p1/p2 chunks plus terminal and error messages.
    - Keep omniscient output behind a separate debug observer.

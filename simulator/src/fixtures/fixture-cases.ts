@@ -10,7 +10,7 @@
  * Values under `demonstrates` were observed once when each case was authored
  * and then frozen; they are documentation, not runtime-derived output.
  */
-import type { ShowdownPokemonSet } from "./showdown";
+import type { ShowdownPokemonSet } from "../core/showdown";
 
 export type FixtureCategory = "natural-random-search" | "custom-scripted" | "forced-terminal";
 

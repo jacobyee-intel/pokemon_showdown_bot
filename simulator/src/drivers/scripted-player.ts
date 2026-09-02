@@ -2,17 +2,21 @@
  * A deterministic player driven by a fixed, ordered list of raw choice
  * strings.
  *
- * This helper reads raw chunks directly from the player's stream (the object
- * `getPlayerStreams` returns) and has no dependency on `RandomPlayerAI` or
- * `BattlePlayer`. It deliberately does not parse requests into a typed
- * structure and does not infer legality: the author of a scripted scenario is
- * fully responsible for supplying choices that are legal for the exact team
- * and turn order they authored. That responsibility belongs to the future
- * action adapter, not here. An illegal choice is still reported rather than
- * hidden: Showdown answers it with an `|error|` line and no new request, so
- * this player treats any `|error|` on its side as fatal.
+ * This driver consumes one side's `ChunkOutput`s from the harness and submits
+ * raw choices through a callback; it holds no Showdown stream and does not
+ * import `showdown.ts`. Typing the input as `ChunkOutput` — not
+ * `SimulatorOutput` — enforces the queue contract: a driver can never be
+ * handed a terminal or error message, and its loop ends only on EOF.
+ *
+ * It deliberately does not parse requests into a typed structure and does not
+ * infer legality: the author of a scripted scenario is fully responsible for
+ * supplying choices that are legal for the exact team and turn order they
+ * authored. That responsibility belongs to the future action adapter, not
+ * here. An illegal choice is still reported rather than hidden: Showdown
+ * answers it with an `|error|` line and no new request, so this player treats
+ * any `|error|` on its side as fatal.
  */
-import type { ShowdownPlayerStream } from "./showdown";
+import type { ChunkOutput } from "../core/simulator-messages";
 
 export type ScriptedSide = "p1" | "p2";
 
@@ -40,19 +44,20 @@ export interface ScriptedPlayerOptions {
 }
 
 /**
- * Drives one side until its stream ends. Resolves when the battle stream
- * closes; rejects if the script and the battle disagree.
+ * Drives one side until its chunk iterable ends. Resolves on EOF; rejects if
+ * the script and the battle disagree.
  */
 export async function runScriptedPlayer(
-  stream: ShowdownPlayerStream,
+  chunks: AsyncIterable<ChunkOutput>,
+  submitChoice: (choice: string) => void,
   options: ScriptedPlayerOptions
 ): Promise<void> {
   const { side, choices, allowUnansweredRequests = false } = options;
   let nextChoiceIndex = 0;
   let lastSentIndex: number | null = null;
 
-  for await (const chunk of stream) {
-    for (const line of chunk.split("\n")) {
+  for await (const chunk of chunks) {
+    for (const line of chunk.lines) {
       // An `|error|` line means the simulator rejected what this side sent.
       // No new `|request|` follows it, so the script can never make progress:
       // failing here turns an otherwise unresolvable lifecycle into an
@@ -79,14 +84,14 @@ export async function runScriptedPlayer(
         );
       }
 
-      const choice = choices[nextChoiceIndex];
+      const choice = choices[nextChoiceIndex]!;
       lastSentIndex = nextChoiceIndex;
       nextChoiceIndex++;
-      // `getPlayerStreams` already prefixes everything written to this stream
-      // with `>${side} `, so the choice is written bare. Writing `>${side} ...`
-      // here would produce a doubled `>p1 >p1 ...` command and be rejected by
-      // the simulator.
-      void stream.write(choice);
+      // Submitted bare: the session writes it verbatim, and
+      // `getPlayerStreams` already prefixes everything written to a player
+      // stream with `>${side} `. Submitting `>${side} ...` here would produce
+      // a doubled `>p1 >p1 ...` command and be rejected by the simulator.
+      submitChoice(choice);
     }
   }
 

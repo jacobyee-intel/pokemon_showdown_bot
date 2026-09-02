@@ -3,7 +3,7 @@
 Real, perspective-specific request/protocol captures from the pinned
 `pokemon-showdown@0.11.11` simulator. Every file here was produced by running
 the actual simulator through the shared battle lifecycle
-(`simulator/src/battle-lifecycle.ts`). Nothing in this directory is
+(`simulator/src/drivers/battle-lifecycle.ts`). Nothing in this directory is
 hand-written, hand-edited, or manually simplified.
 
 These are cross-language test contracts for later TypeScript and Python work,
@@ -81,7 +81,7 @@ npm run fixtures:verify   # routine: regenerate into artifacts/ and byte-compare
 npm run fixtures:capture  # deliberate: rewrite this directory from the manifest
 ```
 
-`simulator/src/fixture-cases.ts` is the frozen, single source of truth for every
+`simulator/src/fixtures/fixture-cases.ts` is the frozen, single source of truth for every
 case. `capture-fixtures.ts` is the only program allowed to write here, and is
 run only when adding a new case or intentionally changing an existing one (for
 example after an approved Pokemon Showdown version upgrade).

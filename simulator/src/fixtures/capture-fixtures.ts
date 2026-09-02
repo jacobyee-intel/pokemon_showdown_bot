@@ -9,7 +9,7 @@
 import { FIXTURE_CASES } from "./fixture-cases";
 import { FIXTURES_ROOT } from "./fixture-paths";
 import { captureFixture, FIXTURE_FILES } from "./fixture-recorder";
-import { EXPECTED_SHOWDOWN_VERSION, getInstalledShowdownVersion } from "./showdown";
+import { EXPECTED_SHOWDOWN_VERSION, getInstalledShowdownVersion } from "../core/showdown";
 
 async function main(): Promise<void> {
   const showdownVersion = getInstalledShowdownVersion();

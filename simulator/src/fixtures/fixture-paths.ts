@@ -8,7 +8,7 @@
 import * as path from "node:path";
 
 /** Repository root, resolved from this module's compiled location. */
-export const REPO_ROOT = path.resolve(__dirname, "..", "..");
+export const REPO_ROOT = path.resolve(__dirname, "..", "..", "..");
 
 /** Version-controlled fixture tree. Written only by `capture-fixtures`. */
 export const FIXTURES_ROOT = path.join(REPO_ROOT, "fixtures");

@@ -8,9 +8,9 @@
  * fails if the lifecycle resolves, if it stays unsettled, or if the rejection
  * loses the side, Showdown's error text, or the offending choice.
  */
-import { runBattleLifecycle } from "./battle-lifecycle";
-import { deriveBattleSeeds } from "./seed";
-import { toShowdownSeed, type ShowdownPokemonSet } from "./showdown";
+import { runBattleLifecycle } from "../drivers/battle-lifecycle";
+import { deriveBattleSeeds } from "../drivers/seed";
+import { toShowdownSeed, type ShowdownPokemonSet } from "../core/showdown";
 
 /** Milliseconds to wait before declaring the lifecycle unsettled. */
 const SETTLE_TIMEOUT_MS = 20_000;

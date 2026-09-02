@@ -50,7 +50,7 @@ source anywhere in the runner or its seed derivation.
 
 ## Integration Boundary
 
-Extend `simulator/src/showdown.ts` with the additional exports this step
+Extend `simulator/src/core/showdown.ts` with the additional exports this step
 needs. Do not import `pokemon-showdown` or any of its internal paths from any
 other project file.
 
@@ -81,7 +81,7 @@ public `pokemon-showdown` entry point, and it exists only to support the Step
 without an equally explicit justification.
 
 The published internal JavaScript module does not include a declaration file.
-Add `simulator/src/showdown-internal.d.ts` containing only the minimal
+Add `simulator/src/core/showdown-internal.d.ts` containing only the minimal
 `RandomPlayerAI` constructor and `start(): Promise<void>` surface used here.
 Do not import Showdown's raw TypeScript source or copy its broader internal
 types into the project.
@@ -122,11 +122,14 @@ only to the fixture recorder introduced in Step 4.
 ```text
 simulator/
 └── src/
-    ├── showdown.ts                 # extended per "Integration Boundary" above
-    ├── showdown-internal.d.ts      # minimal RandomPlayerAI declaration
-    ├── seed.ts                     # pure master-seed -> sub-seed derivation
-    ├── run-seeded-battle.ts        # runner: lifecycle + result parsing
-    └── verify-seeded-battle.ts     # executable verification program
+    ├── core/
+    │   ├── showdown.ts             # Pokemon Showdown integration boundary
+    │   └── showdown-internal.d.ts  # minimal RandomPlayerAI declaration
+    ├── drivers/
+    │   ├── seed.ts                 # pure master-seed -> sub-seed derivation
+    │   └── run-seeded-battle.ts    # runner: lifecycle + result parsing
+    └── verification/
+        └── verify-seeded-battle.ts # executable verification program
 ```
 
 - `seed.ts` exports a single function such as
@@ -220,7 +223,7 @@ Add to `package.json`:
 ```json
 {
   "scripts": {
-    "verify:seeded-battle": "npm run build && node simulator/dist/verify-seeded-battle.js"
+    "verify:seeded-battle": "npm run build && node simulator/dist/verification/verify-seeded-battle.js"
   }
 }
 ```
@@ -251,7 +254,7 @@ Keep `build`, `typecheck`, and `verify:showdown` unchanged.
    timestamp-normalized omniscient protocol log across two runs in the same
    process invocation.
 3. All Showdown imports, including the internal `random-player-ai` path,
-   remain confined to `simulator/src/showdown.ts`.
+   remain confined to `simulator/src/core/showdown.ts`.
 4. A failing or incomplete battle (unparsed terminal line, rethrown
    `RandomPlayerAI` error, invalid master seed) causes the verification
    program to exit with a nonzero status rather than reporting a partial or
@@ -261,6 +264,6 @@ Keep `build`, `typecheck`, and `verify:showdown` unchanged.
    pass unchanged.
 6. `git status --porcelain` shows only the new files/edits from this step;
    Step 2's uncommitted pin (`package.json`, `package-lock.json`,
-   `tsconfig.json`, `README.md`, `simulator/src/showdown.ts`,
-   `simulator/src/verify-showdown.ts`) remains untouched apart from the
+   `tsconfig.json`, `README.md`, `simulator/src/core/showdown.ts`,
+   `simulator/src/verification/verify-showdown.ts`) remains untouched apart from the
    additive exports described above in `showdown.ts`.

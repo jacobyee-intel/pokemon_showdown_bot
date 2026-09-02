@@ -20,7 +20,7 @@ steps share one lifecycle core:
   obtain `{ omniscient, p1, p2 }`, start both players, write the `>start`
   /`>player` block, await completion) into a lower-level function, for
   example `runBattleLifecycle(options: BattleLifecycleOptions):
-  Promise<BattleLifecycleResult>` in `simulator/src/battle-lifecycle.ts`.
+  Promise<BattleLifecycleResult>` in `simulator/src/drivers/battle-lifecycle.ts`.
 - `run-seeded-battle.ts`'s `runSeededBattle` becomes a thin wrapper that
   derives its two `RandomPlayerAI` player specs from the master seed (as
   already specified in Step 3) and calls `runBattleLifecycle`, preserving its
@@ -61,7 +61,7 @@ steps share one lifecycle core:
 
 Custom scenarios (Struggle, Revival Blessing, the forced tie) must be
 deterministic by construction, not discovered by random search. Add a small
-`simulator/src/scripted-player.ts` helper that drives one side of a battle
+`simulator/src/drivers/scripted-player.ts` helper that drives one side of a battle
 from a fixed, ordered list of choice strings:
 
 - It reads raw chunks directly from the player's `Streams.ObjectReadWriteStream`
@@ -155,7 +155,7 @@ across regenerations of the same case.
 
 ## Recorder Design
 
-Add `simulator/src/fixture-recorder.ts` exporting a function such as
+Add `simulator/src/fixtures/fixture-recorder.ts` exporting a function such as
 `captureFixture(caseSpec, outputRoot): CapturedFixture` that:
 
 1. Calls the shared `runBattleLifecycle` from `battle-lifecycle.ts` with an
@@ -212,12 +212,14 @@ stream chunks:
 ```text
 simulator/
 └── src/
-    ├── battle-lifecycle.ts     # shared runner core (Step 3 extraction)
-    ├── scripted-player.ts      # fixed-choice deterministic player
-    ├── fixture-recorder.ts     # chunk capture + normalization + file I/O
-    ├── fixture-cases.ts        # the frozen manifest of all cases below
-    ├── capture-fixtures.ts     # executable: writes fixtures/** from the manifest
-    └── verify-fixtures.ts      # executable: regenerate + byte-compare
+    ├── drivers/
+    │   ├── battle-lifecycle.ts # shared runner core (Step 3 extraction)
+    │   └── scripted-player.ts  # fixed-choice deterministic player
+    └── fixtures/
+        ├── fixture-recorder.ts # chunk capture + normalization + file I/O
+        ├── fixture-cases.ts    # frozen manifest of all cases below
+        ├── capture-fixtures.ts # executable: writes fixtures/** from manifest
+        └── verify-fixtures.ts  # executable: regenerate + byte-compare
 ```
 
 - `fixture-cases.ts` exports the full, frozen list of case specifications
@@ -299,8 +301,8 @@ Add to `package.json`:
 ```json
 {
   "scripts": {
-    "fixtures:capture": "npm run build && node simulator/dist/capture-fixtures.js",
-    "fixtures:verify": "npm run build && node simulator/dist/verify-fixtures.js"
+    "fixtures:capture": "npm run build && node simulator/dist/fixtures/capture-fixtures.js",
+    "fixtures:verify": "npm run build && node simulator/dist/fixtures/verify-fixtures.js"
   }
 }
 ```
@@ -345,7 +347,7 @@ case.
    code added in this step reads `omniscient.jsonl` for any purpose other
    than provenance, debugging, or terminal-result parsing.
 7. All Showdown imports, including any newly needed internal paths, remain
-   confined to `simulator/src/showdown.ts`.
+   confined to `simulator/src/core/showdown.ts`.
 8. Step 3's public behavior is unchanged: `npm run verify:seeded-battle`
    still passes, and `runSeededBattle`'s exported signature and
    `SeededBattleResult` type are unchanged after the lifecycle extraction.
