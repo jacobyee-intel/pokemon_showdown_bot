@@ -46,6 +46,9 @@ simulator/src/
 │   ├── player-protocol-translator.ts
 │   ├── request-parser.ts
 │   └── translator-messages.ts
+├── view/
+│   ├── player-battle-view.ts
+│   └── player-battle-view.typecheck.ts
 ├── verification/
 │   ├── verify-battle-session.ts
 │   ├── verify-player-protocol-translator.ts
@@ -123,6 +126,13 @@ framework:
 - `verify-player-protocol-translator.ts` checks parsing, classification,
   decision identity, rechunking independence, perspective rejection, and
   separate replay of every player golden.
+
+### `view/`
+
+- `player-battle-view.ts` defines the readonly, model-independent
+  `PlayerBattleView` v1 contract and its perspective-local knowledge types.
+- `player-battle-view.typecheck.ts` contains compile-time examples and focused
+  negative checks. It does not parse or reduce protocol.
 
 ## Raw Session API
 
@@ -224,17 +234,36 @@ goldens, such as after an approved Pokemon Showdown version change.
 
 ## Next Layer
 
-The next component defines a stable observation schema. Later state tracking
-will combine the translator's private request payloads with the same player's
-ordinary public protocol lines:
+Step 7 defines the stable, model-independent `PlayerBattleView` contract under
+`src/view/`. It contains only facts directly established by one player's public
+protocol or private request. Step 8 evolves the request-focused translator into
+one public, stateful
+`PlayerBattleTranslator` per side. That object processes every line once while
+keeping request parsing, protocol reduction, and view building as
+focused internal modules:
 
 ```text
-p1 ChunkOutput -> p1 protocol translator -> classified private request
-       |
-       +-------> future p1 state tracker -> complete p1-visible observation
+p1 ChunkOutput
+  -> p1 PlayerBattleTranslator
+       -> request parser
+       -> protocol reducer
+       -> view builder
+  -> p1 PlayerBattleView
 
-future action adapter -> raw Showdown choice -> session.choose("p1", choice)
+exact current request -> Step 9 action adapter -> ActionSet + legal mask
+agent action -> Step 9 action adapter -> raw choice -> session.choose(...)
+
+PlayerBattleView + ActionSet/legal mask
+  -> later JSONL transport
+  -> later static Dex augmentation + Python encoder
+  -> model tensors
 ```
 
-Each translator consumes exactly one player channel. It must never reconstruct
-a player view by taking omniscient state and removing fields.
+Candidate slot identity, move/target IDs, and the legal mask are Step 9
+decision metadata, not fields of `PlayerBattleView`; view move order does not
+align with action indices. Static base types/stats, move mechanics, model token
+IDs, scaling, padding, and tensors are Step 14 concerns. Damage, KO, speed,
+hazard, and belief calculations are Step 22 concerns. Each battle translator
+consumes exactly one player channel, performs no mechanics enrichment, and
+must never reconstruct a player view by taking omniscient state and removing
+fields.

@@ -11,17 +11,29 @@ Keep battle mechanics, translation, and decision-making separate:
 ```text
 Pokemon Showdown
   <-> dumb raw simulator
-        -> p1 raw protocol -> p1 translator -> p1 agent
-        -> p2 raw protocol -> p2 translator -> p2 agent
+        -> p1 raw protocol -> p1 battle translator -> p1 PlayerBattleView
+        -> p2 raw protocol -> p2 battle translator -> p2 PlayerBattleView
         -> debug-only omniscient observer
+
+exact current request
+  -> action adapter -> ActionSet + legal 14-action mask -> agent
+  -> selected action -> action adapter -> raw Showdown choice
+
+Later: PlayerBattleView + ActionSet/legal mask
+  -> static Dex augmentation + Python encoder -> model tensors
 ```
 
 The raw simulator accepts Showdown commands and emits complete, channel-tagged
 player protocol. It does not parse requests, track Pokemon, determine legal
-actions, calculate rewards, or know about models. Each translator receives
-only one player's stream and produces a complete player-observable snapshot.
-Omniscient state is never exposed through the normal simulator, translator, or
-agent interfaces.
+actions, calculate rewards, or know about models. Each stateful battle
+translator receives only one player's stream and produces a model-independent,
+structured snapshot containing only facts directly established by that
+player's public protocol or private request. It is a parser/reducer, not a
+mechanics engine or enrichment layer. The action adapter derives candidate
+identity, legality, and commands from the exact current private request without
+aligning action slots to view move order. Static Dex augmentation and Python
+encoding are later representation steps. Omniscient state is never exposed
+through the normal simulator, translator, action, or agent interfaces.
 
 ## Implementation Order
 
@@ -58,35 +70,63 @@ agent interfaces.
      separately without omniscient input.
    - Keep the interface independent of callbacks, JSONL, Python, and PyTorch.
 
-7. **Finalize observation schema v1**
-   - Define complete own-team information and only publicly revealed opponent
-     information.
-   - Represent Pokemon, moves, PP, six stats, boosts, status, items, abilities,
-     Tera state, side conditions, weather, terrain, and field effects.
-   - Represent unavailable knowledge explicitly as unknown.
-   - Add machine-readable schemas for raw simulator and decision messages.
-   - Leave damage calculations and opponent-set beliefs optional and absent.
+7. **Define `PlayerBattleView` v1 TypeScript contracts - complete**
+   - Put the public immutable, model-independent one-player snapshot contract
+     under `simulator/src/view/`.
+   - Represent only facts directly established by that player's public
+     protocol or private request, with explicit unknown and known-absence
+     states.
+   - Keep static Dex data, mechanics calculations, inferred facts, requests,
+     action candidates, masks, commands, serialization, and tensors outside
+     the view.
+   - Verify contract examples with existing TypeScript tooling; parsing and
+     golden replay remain Step 8 work.
 
-8. **Implement the 14-action adapter**
+8. **Build the per-player battle translator**
+   - Evolve the Step 6 request translator into the single public, stateful
+     `PlayerBattleTranslator` for one battle and one side.
+   - Process every player protocol line once and in order.
+   - Reduce state-changing player protocol with behavior compatible with the
+     official Pokemon Showdown client while excluding its UI state, Dex
+     enrichment, and mechanics-derived calculations. This includes ordinary
+     switches and drags clearing temporary state, Baton Pass transferring
+     boosts and permitted volatiles, Shed Tail transferring Substitute only,
+     `replace` reconciling Illusion identity while preserving visible active
+     state, and protocol-defined updates to abilities, formes, Transform, and
+     layered conditions. Treat protocol annotations such as
+     `[from] move: Baton Pass` as transition inputs rather than independently
+     inferring mechanics.
+   - Pin the reference client revision and verify ordinary switch, Baton Pass,
+     Shed Tail, drag, and Illusion replacement with focused protocol fixtures.
+   - Keep request parsing, protocol reduction, and view building as
+     focused internal modules behind that public object.
+   - Record only explicit facts from public events and that player's private
+     requests; do no Dex lookup, mechanics calculation, or enrichment.
+   - Maintain stable perspective-local Pokemon identities.
+   - Emit a complete replacement `PlayerBattleView` at each decision and wait,
+     with wait requesting no action.
+   - Never reconstruct player state by subtracting fields from omniscient
+     state.
+
+9. **Implement the 14-action adapter**
    - Map indices 0-3 to move slots 1-4.
    - Map indices 4-7 to the same moves with Terastallization.
    - Map indices 8-13 to switch or Revival Blessing targets.
-   - Derive legality exclusively from the current `|request|` payload.
+   - Derive a fixed 14-entry `ActionSet`/candidate list, legal mask, and raw
+     command mapping exclusively from the exact current `|request|` payload.
+   - Keep candidate slot identity, move/target IDs, legality, and command
+     mapping separate from `PlayerBattleView`; view move order does not align
+     with action indices.
    - Reject masked, stale, out-of-range, wrong-player, and wrong-battle
      responses.
    - Translate valid indices into raw Showdown commands.
 
-9. **Implement perspective state tracking**
-   - Maintain one isolated tracker per player stream.
-   - Accumulate public protocol events and that player's private requests.
-   - Maintain stable public Pokemon identities.
-   - Produce a complete `PlayerObservation` snapshot at each decision.
-   - Never reconstruct player state by subtracting fields from omniscient
-     state.
-
 10. **Build the battle coordinator**
-    - Connect raw simulator chunks to translators and structured decisions to
-      agents.
+    - Own one raw battle session and one isolated `PlayerBattleTranslator` per
+      side.
+    - Coordinate the session, translators, action adapter, and agents.
+    - Combine each decision view with the exact request-derived `ActionSet` and
+      legal mask, then send that decision input to the correct agent.
     - Submit translated raw commands back to the correct battle session.
     - Support simultaneous decisions without revealing either selected action
       to the opposing agent.
@@ -102,6 +142,8 @@ agent interfaces.
 12. **Add JSONL transport**
     - Implement JSONL as a transport for the existing simulator and agent
       messages without changing their contracts.
+    - Add versioned machine-readable schemas for stable semantic views,
+      action sets, legal masks, agent actions, terminals, and transport errors.
     - Run long-lived Node processes and surface malformed, stale, or failed
       messages explicitly.
     - Keep in-process agents available for fast tests and fixed baselines.
@@ -113,11 +155,14 @@ agent interfaces.
     - Report win rate, confidence intervals, battle length, decisions per
       second, and battles per second.
 
-14. **Implement Python observation encoding**
+14. **Implement static Dex augmentation and Python encoding**
+    - Consume `PlayerBattleView` plus `ActionSet` and legal mask.
+    - Add static base species types/stats and move
+      type/power/accuracy/priority outside the semantic view.
     - Build stable vocabularies for species, moves, items, abilities, types,
       statuses, and effects, including reserved unknown values.
-    - Convert Pokemon, side, field, action-candidate, and legal-mask data into
-      tensors.
+    - Apply vocab IDs, scaling, padding, and tensor layouts without changing
+      the Node-side semantic contract.
 
 15. **Implement the initial policy/value model**
     - Use a shared per-Pokemon encoder with team pooling as the first model.
@@ -153,10 +198,10 @@ agent interfaces.
     - Compare a flattened MLP, pooled Pokemon encoder, and small Transformer
       under equal environment-decision and wall-clock budgets.
 
-22. **Add advanced mechanics features**
-    - Add damage ranges, accuracy-adjusted knockout probabilities, entry
-      hazards, speed estimates, Random Battle set filtering, and opponent
-      beliefs one feature at a time.
+22. **Add derived mechanics augmentation**
+    - Add damage ranges, knockout probabilities, speed estimates, hazard
+      consequences, Random Battle set filtering, and opponent beliefs one
+      feature at a time.
     - Measure every addition through ablation.
 
 23. **Profile and optimize**
@@ -177,9 +222,9 @@ the stable environment boundary on which model and training work begins.
 ```text
 raw simulator interface
   -> translator contract
-  -> observation schema
+  -> PlayerBattleView contract
+  -> per-player battle translator
   -> action adapter
-  -> perspective state tracker
   -> battle coordinator
   -> masked random validation
   -> JSONL transport

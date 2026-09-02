@@ -23,7 +23,7 @@ Every valid non-wait request emits a decision with a translator-local
 `decisionId`. A wait request emits a wait event and no decision. A non-wait
 request re-emitted with `update: true` receives a new `decisionId`. The highest
 allocated ID is intended to be live, but Step 6 stores no outstanding-decision
-state and exposes no getter; Step 8 entirely owns enforcement and stale-ID
+state and exposes no getter; Step 9 entirely owns enforcement and stale-ID
 rejection.
 
 The parsed JSON object is preserved for later observation and action work.
@@ -198,7 +198,7 @@ Decision IDs:
 `update` is preserved payload metadata, not a discriminator. A re-emitted move
 or forced-switch request keeps its classification, receives a new
 `decisionId`, and does not otherwise change translator state. The highest
-allocated ID is intended to be live, but only Step 8 will enforce that rule,
+allocated ID is intended to be live, but only Step 9 will enforce that rule,
 accept actions, and reject stale IDs.
 
 For a fixed ordered line sequence, concatenated events must be deeply equal
@@ -274,7 +274,7 @@ multi-active slot semantics or legal targets.
 Classify as `wait` when `wait` is exactly `true`. Emit only a wait event,
 allocate no decision ID, and expect no response. Preserve its payload for later
 perspective-state work. Step 6 does not invalidate an earlier action when wait
-arrives; Step 8 owns any such invalidation through live-ID enforcement.
+arrives; Step 9 owns any such invalidation through live-ID enforcement.
 
 ## Error Behavior
 
@@ -410,7 +410,7 @@ Step 6 is complete when:
 5. All five request forms classify according to this plan.
 6. Non-wait requests create new local decision IDs; wait does not.
 7. `update: true` re-emissions create a new identity; Step 6 stores no
-   outstanding identity, and Step 8 enforces which ID is live.
+   outstanding identity, and Step 9 enforces which ID is live.
 8. Events preserve parsed `JsonObject` payloads but expose no `requestIndex`,
    raw JSON, public line index, or simulator `seq`.
 9. Non-request lines produce no events.
@@ -427,17 +427,31 @@ Step 6 is complete when:
 
 ## Deferred Handoffs
 
-- **Step 7 — observation schema:** select stable fields from preserved
-  payloads and decide how wait updates affect observations.
-- **Step 8 — action translation:** define masks and the 14-action mapping,
-  serialize choices, enforce live-ID policy around the highest allocated ID,
-  apply wait-driven invalidation, and reject stale IDs.
-- **Step 9 — perspective state:** combine private requests with ordinary
-  per-player protocol without omniscient leakage.
-- **Step 10 — coordinator:** connect translators, agents, action submission,
-  scheduling, and battle lifecycle.
-- **Later transport/model work:** define JSONL envelopes, Python integration,
-  tensors, rewards, and rollout records.
+- **Step 7 — `PlayerBattleView` contract:** define readonly TypeScript
+  contracts under `simulator/src/view/` for facts directly established by one
+  player's public protocol or private request. Requests, actions, Dex facts,
+  mechanics calculations, serialization, and tensors remain separate.
+- **Step 8 — per-player battle translation:** evolve this request-focused
+  class into the public `PlayerBattleTranslator`. Behind that one object,
+  retain focused request parsing, protocol reduction, and view-building
+  modules. Process each chunk and line once in order, recording only directly
+  observed facts and emitting complete replacement views at decisions and
+  waits without omniscient leakage or mechanics enrichment.
+- **Step 9 — action adapter:** derive the 14-action legal mask and command
+  mapping plus a fixed `ActionSet`/candidate list from the exact current
+  request. Candidate slot identity and move/target IDs stay outside the view.
+  Enforce which decision ID is live, apply wait-driven invalidation, and reject
+  stale or invalid responses.
+- **Step 10 — coordinator:** own the raw session and one battle translator per
+  side, combine views with exact request-derived action sets/legal masks,
+  invoke agents, and submit validated raw choices.
+- **Step 12 — transport:** serialize stable semantic view, action, terminal,
+  and error contracts over JSONL with independently versioned schemas.
+- **Step 14 — static augmentation and model encoding:** consume
+  `PlayerBattleView` plus `ActionSet`/legal mask; add base species types/stats,
+  move type/power/accuracy/priority, vocab IDs, scaling, padding, and tensors.
+- **Step 22 — derived mechanics augmentation:** add damage ranges, KO
+  probabilities, speed estimates, hazards, set filtering, and beliefs.
 
 Future simulator versions or formats may add request forms. Fail with
 `unsupported-request` until support is added intentionally.

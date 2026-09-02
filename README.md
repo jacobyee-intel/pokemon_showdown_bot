@@ -4,10 +4,11 @@ A deterministic, perspective-safe foundation for a Generation 9 Pokemon
 Showdown self-play reinforcement-learning bot. The current implementation runs
 seeded battles in process, exposes a raw per-player simulator interface,
 captures reproducible protocol goldens, and translates private player requests
-into typed decision and wait events.
+into typed decision and wait events. It also defines the immutable,
+perspective-local `PlayerBattleView` v1 contract.
 
-The model, training loop, complete observation schema, 14-action adapter,
-battle coordinator, and Node-to-Python transport are not implemented yet.
+The model, training loop, `PlayerBattleView` reducer, 14-action adapter, battle
+coordinator, and Node-to-Python transport are not implemented yet.
 
 See [MEGAPLAN.md](MEGAPLAN.md) for the high-level roadmap,
 [plans/step-01-project-scaffold.md](plans/step-01-project-scaffold.md) for the scaffolding step,
@@ -15,7 +16,8 @@ See [MEGAPLAN.md](MEGAPLAN.md) for the high-level roadmap,
 [plans/step-03-seeded-battle.md](plans/step-03-seeded-battle.md) for the seeded battle runner,
 [plans/step-04-protocol-goldens.md](plans/step-04-protocol-goldens.md) for protocol golden capture, and
 [plans/step-05-raw-simulator-interface.md](plans/step-05-raw-simulator-interface.md) for the raw simulator interface, and
-[plans/step-06-player-protocol-translator.md](plans/step-06-player-protocol-translator.md) for the per-player protocol translator.
+[plans/step-06-player-protocol-translator.md](plans/step-06-player-protocol-translator.md) for the per-player protocol translator, and
+[plans/step-07-player-observation-schema.md](plans/step-07-player-observation-schema.md) for the player battle view contract.
 
 ## Current Architecture
 
@@ -86,6 +88,7 @@ simulator/src/
 ├── drivers/        # Temporary random/scripted drivers and lifecycle harness
 ├── goldens/        # Golden definitions, capture, paths, and verification
 ├── translator/     # Per-player request parsing and decision/wait events
+├── view/           # Perspective-local PlayerBattleView contracts
 ├── verification/   # Executable simulator checks
 └── main.ts         # Future application entry point
 ```
@@ -148,8 +151,24 @@ decision { battleId, player, decisionId, requestKind, payload }
 wait     { battleId, player, payload }
 ```
 
-The next planned layer defines the complete player observation schema. Action
-indices and conversion back to raw Showdown commands remain Step 8 work.
+The model-independent, immutable `PlayerBattleView` TypeScript contract now
+lives under `simulator/src/view/`. It records only facts directly established
+by one player's public protocol or private request; it does not contain static
+Dex enrichment, mechanics calculations, inferred facts, requests, or actions.
+
+Step 8 then evolves the request-focused translator into one stateful
+`PlayerBattleTranslator` per player. Each chunk and line is processed once in
+order, and complete replacement views are emitted at decisions and waits.
+Step 9 derives a fixed 14-entry `ActionSet`, legal mask, and raw command mapping
+from the exact current request. Candidate slots and move/target IDs remain
+outside the view; view move order is not action-index order.
+
+Step 10 coordinates the session, translators, action adapter, and agents.
+Step 12 serializes stable semantic contracts over JSONL. Step 14 joins static
+Dex facts such as base species types/stats and move
+type/power/accuracy/priority, then applies vocab IDs, scaling, padding, and
+tensor encoding. Derived damage, KO, speed, hazard, and belief augmentation is
+deferred to Step 22.
 
 ## Protocol Goldens
 
