@@ -29,7 +29,7 @@ const opponentPokemon = {
   movesComplete: unknown,
   movesOverride: unknown,
   item: unknown,
-  ability: { base: unknown, current: unknown },
+  ability: { base: unknown, current: unknown, suppressed: unknown },
   formeOverride: knownNull,
   transformedInto: unknown,
   typeOverride: unknown,
@@ -64,6 +64,7 @@ const ownPokemon = {
   ability: {
     base: { kind: "known", value: "imposter" },
     current: { kind: "known", value: "imposter" },
+    suppressed: { kind: "known", value: false },
   },
   formeOverride: knownNull,
   transformedInto: { kind: "known", value: opponentPokemon },

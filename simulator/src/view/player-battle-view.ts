@@ -114,6 +114,8 @@ export interface MoveView {
 export interface AbilityView {
   readonly base: Knowledge<AbilityId | null>;
   readonly current: Knowledge<AbilityId | null>;
+  /** Explicitly announced suppression state; never mechanics-derived. */
+  readonly suppressed: Knowledge<boolean>;
 }
 
 export interface TeraView {

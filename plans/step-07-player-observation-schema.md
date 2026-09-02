@@ -217,6 +217,7 @@ export interface MoveView {
 export interface AbilityView {
   readonly base: Knowledge<AbilityId | null>;
   readonly current: Knowledge<AbilityId | null>;
+  readonly suppressed: Knowledge<boolean>;
 }
 
 export interface TeraView {
@@ -257,9 +258,10 @@ announced temporary state or its clear; they never trigger a species, forme,
 move, stat, or type lookup. Normal `stats` and `moves` remain available while
 an override is active. Tera facts are retained only when directly established.
 
-Ability `base` and `current` preserve distinct stated values. `current:
-known(null)` does not mean “suppressed.” Generic effect IDs preserve explicit
-announcements without calculating whether an ability is operational.
+Ability `base` and `current` preserve distinct stated identities.
+`suppressed` records only an explicit suppression or restoration announcement;
+it is never calculated from battle mechanics. `current: known(null)` does not
+mean “suppressed.”
 
 Effect duration is omitted because common durations depend on hidden facts.
 `EffectView.arguments` preserves only arguments explicitly carried by the
@@ -286,7 +288,7 @@ durations, inferred sources, or other derived effect state.
 | stats and stats override | `stats` retains the exact normal non-HP stat block established by that player's private request. `statsOverride` records an exact temporary Transform stat block only when the same-player request establishes it; never species base stats or calculated stats. |
 | moves/PP, completeness, and moves override | `moves` retains normal move IDs and PP explicitly present in the own request, or publicly revealed move IDs. `movesComplete` is known true only when a same-player request establishes the full normal moveset; a public reveal normally leaves completeness unknown. `movesOverride` records the current temporary Transform moves established by same-player requests or official client-compatible reduction from already visible target facts. Opponent PP is normally unknown. |
 | item | Explicit private request value or public item gain/loss/reveal event. |
-| ability base/current | Explicit request or public ability/change facts only. |
+| ability base/current/suppressed | Explicit request or public ability, change, suppression, and restoration facts only. Suppression is never calculated from other battle state. |
 | forme/Transform overrides | Explicit public forme-change, Transform, or clear transitions using official client-compatible protocol reduction. They do not replace permanent `species` identity or copy hidden target facts. |
 | `typeOverride` | Explicit dynamic type-change/clear announcement only; never species-derived types. |
 | Tera state/type | Explicit private request fields or public Terastallization facts. |
@@ -442,8 +444,8 @@ Step 7 is complete when:
    or unknown until revealed.
 6. No static types/stats, move mechanics, damage, effectiveness, speed, KO,
    legality, set inference, beliefs, or derived cross-field facts appear.
-7. Base/current ability values and generic effects preserve explicit facts
-   without calculating ability operation or suppression.
+7. Base/current ability values, explicit suppression state, and generic
+   effects preserve explicit facts without calculating ability operation.
 8. Stable side-local IDs, references, and ordering are documented.
 9. Fainted active occupants persist until explicit slot replacement.
 10. Requests, action candidates, masks, and commands are outside the view.
