@@ -10,7 +10,7 @@
  * unchanged; re-joining a chunk's lines is safe because `BattlePlayer` splits
  * on `\n` and ignores any line not starting with `|`.
  *
- * `RandomPlayerAI` is temporary smoke-test/fixture infrastructure. It must not
+ * `RandomPlayerAI` is temporary smoke-test/golden infrastructure. It must not
  * become production agent infrastructure.
  */
 import {

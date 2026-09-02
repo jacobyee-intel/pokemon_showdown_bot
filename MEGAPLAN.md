@@ -34,8 +34,8 @@ agent interfaces.
 3. **Run one seeded Gen 9 Random Battle - complete**
    - Run and reproduce a complete in-memory battle without a server.
 
-4. **Save protocol fixtures - complete**
-   - Capture deterministic p1, p2, and debug-only omniscient fixtures for
+4. **Save protocol goldens - complete**
+   - Capture deterministic p1, p2, and debug-only omniscient goldens for
      ordinary battles, voluntary switching, Tera, Struggle, Revival Blessing,
      and terminal ties.
 
@@ -44,16 +44,19 @@ agent interfaces.
    - Emit channel-tagged p1/p2 chunks plus terminal and error messages.
    - Keep omniscient output behind a separate debug observer.
    - Refactor the seeded runner onto this interface without changing its
-     normalized transcript or fixture output.
+     normalized transcript or golden output.
    - Reject invalid lifecycle operations such as choices before start or after
      termination.
 
-6. **Define the translator interface**
+6. **Define the translator interface - complete**
    - Consume raw protocol for exactly one player.
-   - Emit structured decisions and optional non-decision state updates.
+   - Classify Team Preview, move, forced switch, Revival Blessing, and wait
+     requests while preserving their parsed payloads.
+   - Allocate monotonic per-player decision IDs only for non-wait requests.
+   - Reject malformed, unsupported, and wrong-perspective input explicitly.
+   - Verify chunk/sequence independence and replay each p1/p2 golden
+     separately without omniscient input.
    - Keep the interface independent of callbacks, JSONL, Python, and PyTorch.
-   - Make fixture replay sufficient to test translation without running a
-     battle.
 
 7. **Finalize observation schema v1**
    - Define complete own-team information and only publicly revealed opponent

@@ -6,7 +6,7 @@ Introduce a single, message-based interface to one Pokemon Showdown battle:
 `ShowdownBattleSession`. It accepts three raw lifecycle operations (`start`,
 `choose`, `close`) and emits complete, channel-tagged raw protocol lines for
 `p1` and `p2`, plus exactly one terminal message and any lifecycle error
-messages. Every existing driver — the Step 3 seeded runner, the Step 4 fixture
+messages. Every existing driver — the Step 3 seeded runner, the Step 4 golden
 recorder, the scripted player, and the temporary `RandomPlayerAI` smoke drivers
 — moves onto this one interface, with no second lifecycle implementation and no
 observable behavior drift. The session is deliberately dumb: a pipe with a state
@@ -19,7 +19,7 @@ sole owner of the lifecycle and of all three underlying player streams; expose
 outputs as one single-use `AsyncIterable`; add a separate debug-only omniscient
 observer; refactor `battle-lifecycle.ts` into a thin harness over the session
 with `runBattleLifecycle`, `runSeededBattle`, `SeededBattleResult`, and
-`captureFixture` behaviorally and byte-for-byte unchanged; add one
+`captureGolden` behaviorally and byte-for-byte unchanged; add one
 dependency-free executable verification program.
 
 ## Explicit Non-Goals
@@ -33,7 +33,7 @@ any normal output. The only protocol line it ever inspects is the terminal
 `|win|`/`|tie` line on the omniscient channel. Out of scope for this step: the
 translator contract (Step 6), observation schema (Step 7), action adapter (Step
 8), state tracker (Step 9), coordinator (Step 10), JSONL transport (Step 12),
-concurrent or multiplexed sessions, any test framework, new fixture cases, new
+concurrent or multiplexed sessions, any test framework, new golden cases, new
 formats, replacing `RandomPlayerAI`, performance tuning, timeouts, retries, and
 reconnect logic.
 
@@ -107,7 +107,7 @@ export class SimulatorLifecycleError extends Error {
 
 `battleId` is a constructor argument carried on every output so a caller holding
 several sessions (and, later, a JSONL reader) can attribute messages. Callers
-supply it deterministically (`"seeded-1"`, a fixture `caseId`); the session never
+supply it deterministically (`"seeded-1"`, a golden `caseId`); the session never
 generates one, since a generated id would be a non-deterministic input. There is
 deliberately **no** input message union and no generic `submit`: the three typed
 methods below are the input contract. Step 12 adds the wire envelope that maps
@@ -162,7 +162,7 @@ export class ShowdownBattleSession {
 
 Seeds stay as Showdown's `PRNGSeed` (a plain string type in the pinned release)
 rather than the raw `SeedWords` tuple, so `run-seeded-battle.ts`,
-`fixture-recorder.ts`, and `verify-scripted-error.ts` keep their existing
+`golden-recorder.ts`, and `verify-scripted-error.ts` keep their existing
 `toShowdownSeed(...)` call sites unchanged — the least disruptive contract, and
 still trivially serializable. `start` is explicit rather than
 constructor-driven because construction must be side-effect free so `outputs()`
@@ -322,7 +322,7 @@ iterator returned by `outputs()` implements `return()`, so breaking out of a
 `Battle`. This close-on-cancel behavior belongs to the session iterator alone;
 the harness's per-side driver queues are separate objects whose iterators can be
 cancelled without touching the session (see "Refactoring Strategy"). Fan-out to
-several interested parties (a player driver plus a fixture recorder) is the
+several interested parties (a player driver plus a golden recorder) is the
 harness's job: `battle-lifecycle.ts` owns the single `for await` and dispatches
 per channel; no separate dispatcher module is added. Queueing is deliberately minimal: an
 unbounded in-memory FIFO filled from construction, so attaching `outputs()` late
@@ -353,7 +353,7 @@ export interface DebugOmniscientObserver {
   onOmniscientLines(lines: readonly string[]): void;
 }
 
-/** Accumulates raw omniscient lines. Debug, fixtures, and provenance only. */
+/** Accumulates raw omniscient lines. Debug, goldens, and provenance only. */
 export function createRecordingOmniscientObserver(): DebugOmniscientObserver & {
   readonly lines: readonly string[];
   readonly callCount: number;
@@ -379,9 +379,9 @@ test. The old `ObservedStream`
 two separately typed callbacks — `onLines(player: BattleSide, ...)` for normal
 protocol and `onDebugLines(lines)` for omniscient — so no single channel-tagged
 callback can carry both. Sanctioned debug consumers, and only these:
-`battle-lifecycle.ts` (which owes Step 3 an `omniscientLog`), the fixture
+`battle-lifecycle.ts` (which owes Step 3 an `omniscientLog`), the golden
 recorder's `omniscient.jsonl` writer, and the new verification program. This
-restates `fixtures/README.md`'s isolation rule at the type level; it does not
+restates `goldens/README.md`'s isolation rule at the type level; it does not
 widen it.
 
 ## Refactoring Strategy
@@ -549,12 +549,12 @@ The `move` probability validation moves here. `RandomPlayerAI` sees identical
 decisions are unchanged; re-joining is safe because it splits on `\n` and
 ignores any line not starting with `|`.
 
-**`fixture-recorder.ts`** changes in three places. `toLifecycleOptions` gains a
+**`golden-recorder.ts`** changes in three places. `toLifecycleOptions` gains a
 second observer parameter and becomes
 `toLifecycleOptions(caseSpec, onLines?: (player: BattleSide, lines: readonly
 string[]) => void, onDebugLines?: (lines: readonly string[]) => void):
 BattleLifecycleOptions`, setting `battleId: caseSpec.caseId` and forwarding both
-observers. `captureFixture` supplies
+observers. `captureGolden` supplies
 `(player, lines) => { for (const line of lines) captured[player].push(normalizeProtocolLine(line)); }`
 for p1/p2 — dropping the now-redundant `splitProtocolChunk` call — and
 `(lines) => { for (const line of lines) captured.omniscient.push(normalizeProtocolLine(line)); }`
@@ -595,19 +595,19 @@ simulator/src/
 │   ├── random-player-driver.ts      # NEW: temporary RandomPlayerAI bridge
 │   ├── battle-lifecycle.ts          # MODIFIED: harness over the session
 │   └── scripted-player.ts           # MODIFIED: consumes SimulatorOutput
-├── fixtures/
-│   └── fixture-recorder.ts          # MODIFIED: player/debug capture callbacks
+├── goldens/
+│   └── golden-recorder.ts          # MODIFIED: player/debug capture callbacks
 └── verification/
     └── verify-battle-session.ts     # NEW: executable verification program
 ```
 
-Unchanged: `run-seeded-battle.ts`, `protocol.ts`, `seed.ts`, `fixture-cases.ts`,
-`fixture-paths.ts`, `capture-fixtures.ts`, `verify-fixtures.ts`,
+Unchanged: `run-seeded-battle.ts`, `protocol.ts`, `seed.ts`, `golden-cases.ts`,
+`golden-paths.ts`, `capture-goldens.ts`, `verify-goldens.ts`,
 `verify-seeded-battle.ts`, `verify-scripted-error.ts`, `verify-showdown.ts`,
 `showdown-internal.d.ts`, `main.ts`. Also modified: `package.json` (the script
 below), `README.md` (a short "Raw Simulator Interface" section linking this
 plan), `MEGAPLAN.md` (mark Step 5 complete). The simulator files are grouped
-by responsibility without adding a dependency or changing `fixtures/` or
+by responsibility without adding a dependency or changing `goldens/` or
 `schemas/`.
 
 ```json
@@ -723,12 +723,12 @@ blocking failure rather than an expected consequence of refactoring.
 scripted player's `|error|` → rejected-promise conversion and its exact
 diagnostic text survived.
 
-`npm run fixtures:verify`, run twice in immediate succession, must report all
-six cases and 24 files byte-identical against the checked-in `fixtures/` tree.
+`npm run goldens:verify`, run twice in immediate succession, must report all
+six cases and 24 files byte-identical against the checked-in `goldens/` tree.
 This is the strongest single regression check in this step: it covers
 per-channel line ordering, `|request|` preservation, `>forcetie`/`>editbattle`
 handling, and omniscient/p1/p2 separation across both formats.
-`npm run fixtures:capture` is **not** run — if it were needed, the refactor has
+`npm run goldens:capture` is **not** run — if it were needed, the refactor has
 drifted.
 
 ## Transport, Concurrency, and the Step 6 Boundary
@@ -743,11 +743,11 @@ Step 6 depends on this step through exactly two things. First,
 `simulator-messages.ts`: a translator imports `SimulatorOutput`, `ChunkOutput`,
 `BattleSide`, and `TerminalOutput`, and nothing from `battle-session.ts`,
 `battle-lifecycle.ts`, or `showdown.ts`, and never imports
-`debug-omniscient-observer.ts`. Second, fixture replay: for a given case, the
+`debug-omniscient-observer.ts`. Second, golden replay: for a given case, the
 `lines` of every `ChunkOutput` with `player === "p1"`, concatenated in order and
 passed through `normalizeProtocolLine`, equal
-`fixtures/<formatId>/<caseId>/p1.jsonl` line for line. Guaranteed by
-`fixtures:verify` passing after the refactor, this makes fixture replay a
+`goldens/<formatId>/<caseId>/p1.jsonl` line for line. Guaranteed by
+`goldens:verify` passing after the refactor, this makes golden replay a
 sufficient test harness for translation without running a battle. A translator
 therefore consumes exactly one player's raw stream, never both, never omniscient
 data, and can be developed with no live simulator at all.
@@ -769,8 +769,8 @@ data, and can be developed with no live simulator at all.
 4. `npm run verify:battle-session` passes all twelve assertions and exits `0`, and
    every regression command listed above passes — in particular
    `verify:seeded-battle` with an unchanged transcript, `verify:scripted-error`
-   with its file unmodified, and `fixtures:verify` reporting all six cases and
-   24 files byte-identical twice in a row without `fixtures:capture` being run.
+   with its file unmodified, and `goldens:verify` reporting all six cases and
+   24 files byte-identical twice in a row without `goldens:capture` being run.
 5. All `pokemon-showdown` imports, including the temporary internal
    `random-player-ai` path, remain confined to `simulator/src/core/showdown.ts` and
    that exception is not widened; no new dependency and no test framework was

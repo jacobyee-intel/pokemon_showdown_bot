@@ -1,6 +1,6 @@
 /**
  * Protocol line helpers shared by the battle lifecycle (Step 3) and the
- * fixture recorder (Step 4).
+ * golden recorder (Step 4).
  *
  * Showdown batches protocol lines into stream chunks in ways that are not
  * guaranteed to be stable, and it emits wall-clock timestamps. Both steps need

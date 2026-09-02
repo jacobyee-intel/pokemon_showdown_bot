@@ -1,7 +1,7 @@
 /**
- * Captures perspective-specific protocol fixtures from the pinned simulator.
+ * Captures perspective-specific protocol goldens from the pinned simulator.
  *
- * Fixtures are produced only by running the real simulator through the shared
+ * Goldens are produced only by running the real simulator through the shared
  * lifecycle in `battle-lifecycle.ts`. Nothing here hand-authors, trims, or
  * re-serializes protocol content: `|request|` payloads are preserved as the
  * simulator's original, un-reparsed text.
@@ -18,15 +18,15 @@ import {
 import { normalizeProtocolLine } from "../core/protocol";
 import { deriveBattleSeeds } from "../drivers/seed";
 import { toShowdownSeed } from "../core/showdown";
-import type { FixtureCaseSpec, FixturePlayerSpec } from "./fixture-cases";
+import type { GoldenCaseSpec, GoldenPlayerSpec } from "./golden-cases";
 
 /** The three files written per case, in fixed order. */
-export const FIXTURE_STREAM_FILES = ["p1.jsonl", "p2.jsonl", "omniscient.jsonl"] as const;
+export const GOLDEN_STREAM_FILES = ["p1.jsonl", "p2.jsonl", "omniscient.jsonl"] as const;
 
 /** Every file written per case, in fixed order. */
-export const FIXTURE_FILES = ["meta.json", ...FIXTURE_STREAM_FILES] as const;
+export const GOLDEN_FILES = ["meta.json", ...GOLDEN_STREAM_FILES] as const;
 
-export interface CapturedFixture {
+export interface CapturedGolden {
   caseId: string;
   /** Directory the case was written to, relative to the output root. */
   relativeDirectory: string;
@@ -35,7 +35,7 @@ export interface CapturedFixture {
 }
 
 function playerLifecycleSpec(
-  spec: FixturePlayerSpec,
+  spec: GoldenPlayerSpec,
   teamSeed: ReturnType<typeof toShowdownSeed>,
   agentSeed: ReturnType<typeof toShowdownSeed>
 ): PlayerLifecycleSpec {
@@ -59,7 +59,7 @@ function playerLifecycleSpec(
 
 /** Builds the lifecycle options for a case. Seeds always come from the master seed. */
 export function toLifecycleOptions(
-  caseSpec: FixtureCaseSpec,
+  caseSpec: GoldenCaseSpec,
   onLines?: (player: BattleSide, lines: readonly string[]) => void,
   onDebugLines?: (lines: readonly string[]) => void
 ): BattleLifecycleOptions {
@@ -89,8 +89,8 @@ export function toLifecycleOptions(
  * literal order below is the file's field order; runtime data structures are
  * never spread into it.
  */
-function buildMeta(caseSpec: FixtureCaseSpec, showdownVersion: string): string {
-  const player = (spec: FixturePlayerSpec): Record<string, unknown> => {
+function buildMeta(caseSpec: GoldenCaseSpec, showdownVersion: string): string {
+  const player = (spec: GoldenPlayerSpec): Record<string, unknown> => {
     if (spec.kind === "random") {
       return { kind: "random", name: spec.name, move: spec.move };
     }
@@ -140,15 +140,15 @@ function serializeLines(lines: readonly string[]): string {
 }
 
 /**
- * Runs a case and writes its four fixture files under
+ * Runs a case and writes its four golden files under
  * `<outputRoot>/<formatId>/<caseId>/`. A rejected capture propagates the error
  * and writes nothing.
  */
-export async function captureFixture(
-  caseSpec: FixtureCaseSpec,
+export async function captureGolden(
+  caseSpec: GoldenCaseSpec,
   outputRoot: string,
   showdownVersion: string
-): Promise<CapturedFixture> {
+): Promise<CapturedGolden> {
   const captured: { p1: string[]; p2: string[]; omniscient: string[] } = {
     p1: [],
     p2: [],
@@ -184,7 +184,7 @@ export async function captureFixture(
   const relativeDirectory = path.posix.join(caseSpec.formatId, caseSpec.caseId);
   const directory = path.join(outputRoot, caseSpec.formatId, caseSpec.caseId);
   await mkdir(directory, { recursive: true });
-  for (const fileName of FIXTURE_FILES) {
+  for (const fileName of GOLDEN_FILES) {
     await writeFile(path.join(directory, fileName), files[fileName]!, "utf8");
   }
 

@@ -115,7 +115,7 @@ The runner must follow this exact sequence, matching Showdown's own
 
 The runner must not call `process.exit`, start a server, open a network port,
 or write files as a side effect of running the battle; file output belongs
-only to the fixture recorder introduced in Step 4.
+only to the golden recorder introduced in Step 4.
 
 ## Types and Files
 
@@ -142,7 +142,7 @@ simulator/
 - `run-seeded-battle.ts` exports a function such as
   `runSeededBattle(masterSeed: number): Promise<SeededBattleResult>` plus the
   `SeededBattleResult` type described below. It contains the lifecycle logic
-  from the previous section and no fixture-file logic.
+  from the previous section and no golden-file logic.
 - `verify-seeded-battle.ts` is a small executable (same style as
   `verify-showdown.ts`) that runs `runSeededBattle` with a fixed literal
   master seed, asserts the result, and prints one success message.
@@ -209,7 +209,7 @@ The runner must not swallow or downgrade failures:
 
 This double-run comparison is the only determinism check required in this
 step; it does not need to compare against a checked-in golden file (that
-begins in Step 4, which persists fixtures to disk).
+begins in Step 4, which persists goldens to disk).
 
 Set `process.exitCode = 1` when the verification executable starts and change
 it to `0` only after all awaited work and assertions complete. This ensures a
@@ -236,7 +236,7 @@ Keep `build`, `typecheck`, and `verify:showdown` unchanged.
   index mapping, legality derived from the live request).
 - The perspective-safe state tracker (public/private information split,
   stable Pokemon identities, boosts/volatiles/side-conditions/field tracking).
-- Persisting protocol fixtures or request JSON to disk (Step 4).
+- Persisting protocol goldens or request JSON to disk (Step 4).
 - Any test framework (Jest/Vitest); continue using small executable
   verification programs.
 - Python integration of any kind.

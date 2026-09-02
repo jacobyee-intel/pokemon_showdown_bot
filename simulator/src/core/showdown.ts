@@ -11,7 +11,7 @@ import showdownPackageJson from "pokemon-showdown/package.json";
 // public `pokemon-showdown` entry point, so it is reached through an internal
 // package path. This module is the only place in the project allowed to import
 // it, and it exists solely to support the Step 3/4 smoke-test runner and
-// fixture capture. `RandomPlayerAI` must not become production agent
+// golden capture. `RandomPlayerAI` must not become production agent
 // infrastructure, and this exception must not be widened to other internal
 // paths without an equally explicit justification. The published internal
 // module ships no declaration file; see `showdown-internal.d.ts` for the
@@ -131,7 +131,7 @@ export function createPlayerBridgeStream(
 
 /**
  * Constructs Showdown's own `RandomPlayerAI`, seeded deterministically.
- * Temporary smoke-test/fixture infrastructure only (see the import comment).
+ * Temporary smoke-test/golden infrastructure only (see the import comment).
  */
 export function createRandomPlayerAI(
   playerStream: ShowdownPlayerStream,

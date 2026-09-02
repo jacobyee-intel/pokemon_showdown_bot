@@ -1,15 +1,15 @@
 /**
- * Executable: regenerates every fixture case into a scratch directory and
- * byte-compares it against the checked-in `fixtures/` tree.
+ * Executable: regenerates every golden case into a scratch directory and
+ * byte-compares it against the checked-in `goldens/` tree.
  *
- * This is the command run routinely. It never writes into `fixtures/`.
+ * This is the command run routinely. It never writes into `goldens/`.
  */
 import { readFile, rm } from "node:fs/promises";
 import * as path from "node:path";
 
-import { FIXTURE_CASES } from "./fixture-cases";
-import { FIXTURES_ROOT, FIXTURES_VERIFY_SCRATCH_ROOT } from "./fixture-paths";
-import { captureFixture, FIXTURE_FILES } from "./fixture-recorder";
+import { GOLDEN_CASES } from "./golden-cases";
+import { GOLDENS_ROOT, GOLDENS_VERIFY_SCRATCH_ROOT } from "./golden-paths";
+import { captureGolden, GOLDEN_FILES } from "./golden-recorder";
 import { EXPECTED_SHOWDOWN_VERSION, getInstalledShowdownVersion } from "../core/showdown";
 
 async function readCheckedInFile(filePath: string): Promise<string | null> {
@@ -25,38 +25,38 @@ async function main(): Promise<void> {
   const showdownVersion = getInstalledShowdownVersion();
   if (showdownVersion !== EXPECTED_SHOWDOWN_VERSION) {
     throw new Error(
-      `refusing to verify fixtures: expected pokemon-showdown@${EXPECTED_SHOWDOWN_VERSION}, found @${showdownVersion}`
+      `refusing to verify goldens: expected pokemon-showdown@${EXPECTED_SHOWDOWN_VERSION}, found @${showdownVersion}`
     );
   }
 
   // Start from a clean scratch tree so a stale file can never mask a change.
-  await rm(FIXTURES_VERIFY_SCRATCH_ROOT, { recursive: true, force: true });
+  await rm(GOLDENS_VERIFY_SCRATCH_ROOT, { recursive: true, force: true });
 
   const failures: string[] = [];
   let fileCount = 0;
 
-  for (const caseSpec of FIXTURE_CASES) {
+  for (const caseSpec of GOLDEN_CASES) {
     let captured;
     try {
-      captured = await captureFixture(caseSpec, FIXTURES_VERIFY_SCRATCH_ROOT, showdownVersion);
+      captured = await captureGolden(caseSpec, GOLDENS_VERIFY_SCRATCH_ROOT, showdownVersion);
     } catch (error) {
-      throw new Error(`fixture case "${caseSpec.caseId}" failed to regenerate`, { cause: error });
+      throw new Error(`golden case "${caseSpec.caseId}" failed to regenerate`, { cause: error });
     }
 
-    for (const fileName of FIXTURE_FILES) {
+    for (const fileName of GOLDEN_FILES) {
       const relativePath = path.posix.join(captured.relativeDirectory, fileName);
       const expected = await readCheckedInFile(
-        path.join(FIXTURES_ROOT, captured.relativeDirectory, fileName)
+        path.join(GOLDENS_ROOT, captured.relativeDirectory, fileName)
       );
       fileCount++;
       if (expected === null) {
-        failures.push(`${caseSpec.caseId}: missing checked-in file fixtures/${relativePath}`);
+        failures.push(`${caseSpec.caseId}: missing checked-in file goldens/${relativePath}`);
         continue;
       }
       const actual = captured.files[fileName]!;
       if (actual !== expected) {
         failures.push(
-          `${caseSpec.caseId}: byte mismatch in fixtures/${relativePath} ` +
+          `${caseSpec.caseId}: byte mismatch in goldens/${relativePath} ` +
             `(checked-in ${expected.length} bytes, regenerated ${actual.length} bytes)`
         );
       }
@@ -69,11 +69,11 @@ async function main(): Promise<void> {
     for (const failure of failures) {
       console.error(`FAIL ${failure}`);
     }
-    throw new Error(`${failures.length} fixture file(s) did not match`);
+    throw new Error(`${failures.length} golden file(s) did not match`);
   }
 
   console.log(
-    `OK: verified ${FIXTURE_CASES.length} fixture case(s), ${fileCount} file(s) byte-identical.`
+    `OK: verified ${GOLDEN_CASES.length} golden case(s), ${fileCount} file(s) byte-identical.`
   );
 }
 

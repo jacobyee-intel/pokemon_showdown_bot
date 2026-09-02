@@ -122,7 +122,7 @@ Updating Pokemon Showdown must be intentional:
 3. Update the version and commit constants together.
 4. Regenerate `package-lock.json`.
 5. Run all existing simulator and trainer validations.
-6. Once protocol fixtures exist, regenerate or verify them before accepting the upgrade.
+6. Once protocol goldens exist, regenerate or verify them before accepting the upgrade.
 
 Do not update Pokemon Showdown automatically during unrelated dependency maintenance.
 
@@ -162,7 +162,7 @@ Vendor published package contents with an existing `dist/` directory, or explici
 - Starting a Pokemon Showdown server
 - Running battles
 - Generating Random Battle teams
-- Capturing protocol fixtures
+- Capturing protocol goldens
 - State tracking
 - Action generation or masking
 - Python integration

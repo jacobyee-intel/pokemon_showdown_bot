@@ -8,7 +8,7 @@
  * to observe it is to pass an observer explicitly through
  * `ShowdownBattleSession`'s `debug` constructor option. Sanctioned consumers
  * are exactly: `battle-lifecycle.ts` (which owes Step 3 an `omniscientLog`),
- * the fixture recorder's `omniscient.jsonl` writer, and
+ * the golden recorder's `omniscient.jsonl` writer, and
  * `verify-battle-session.ts`.
  */
 
@@ -22,14 +22,14 @@ export interface DebugOmniscientObserver {
   onOmniscientLines(lines: readonly string[]): void;
 }
 
-/** An observer that accumulates raw omniscient lines. Debug/fixtures only. */
+/** An observer that accumulates raw omniscient lines. Debug/goldens only. */
 export interface RecordingOmniscientObserver extends DebugOmniscientObserver {
   readonly lines: readonly string[];
   /** Number of non-empty chunks observed. Zero-line chunks never call back. */
   readonly callCount: number;
 }
 
-/** Accumulates raw omniscient lines. Debug, fixtures, and provenance only. */
+/** Accumulates raw omniscient lines. Debug, goldens, and provenance only. */
 export function createRecordingOmniscientObserver(): RecordingOmniscientObserver {
   const lines: string[] = [];
   let callCount = 0;

@@ -1,13 +1,35 @@
 # Pokemon Showdown Bot
 
-Initial project placeholder.
+A deterministic, perspective-safe foundation for a Generation 9 Pokemon
+Showdown self-play reinforcement-learning bot. The current implementation runs
+seeded battles in process, exposes a raw per-player simulator interface,
+captures reproducible protocol goldens, and translates private player requests
+into typed decision and wait events.
+
+The model, training loop, complete observation schema, 14-action adapter,
+battle coordinator, and Node-to-Python transport are not implemented yet.
 
 See [MEGAPLAN.md](MEGAPLAN.md) for the high-level roadmap,
 [plans/step-01-project-scaffold.md](plans/step-01-project-scaffold.md) for the scaffolding step,
 [plans/step-02-pin-showdown.md](plans/step-02-pin-showdown.md) for the dependency pin,
 [plans/step-03-seeded-battle.md](plans/step-03-seeded-battle.md) for the seeded battle runner,
-[plans/step-04-protocol-fixtures.md](plans/step-04-protocol-fixtures.md) for protocol fixture capture, and
-[plans/step-05-raw-simulator-interface.md](plans/step-05-raw-simulator-interface.md) for the raw simulator interface.
+[plans/step-04-protocol-goldens.md](plans/step-04-protocol-goldens.md) for protocol golden capture, and
+[plans/step-05-raw-simulator-interface.md](plans/step-05-raw-simulator-interface.md) for the raw simulator interface, and
+[plans/step-06-player-protocol-translator.md](plans/step-06-player-protocol-translator.md) for the per-player protocol translator.
+
+## Current Architecture
+
+```text
+Pokemon Showdown
+  -> ShowdownBattleSession
+       -> p1 ChunkOutput -> p1 PlayerProtocolTranslator -> decision/wait events
+       -> p2 ChunkOutput -> p2 PlayerProtocolTranslator -> decision/wait events
+       -> debug-only omniscient observer
+```
+
+The normal player path never receives omniscient protocol. The translator is a
+one-way, in-process TypeScript API: it classifies requests but does not choose
+actions or submit commands back to the simulator.
 
 ## Pokemon Showdown Dependency
 
@@ -46,7 +68,7 @@ decisions) in `simulator/src/drivers/seed.ts`, which is pure and has no
 `Date.now()`, or any other non-deterministic source.
 
 Showdown's own `RandomPlayerAI` drives both sides. It is temporary smoke-test
-and fixture infrastructure only, and must not become production agent
+and golden infrastructure only, and must not become production agent
 infrastructure.
 
 `npm run verify:scripted-error` checks the opposite path: a scripted side that
@@ -62,7 +84,8 @@ The TypeScript simulator is grouped by responsibility:
 simulator/src/
 ├── core/           # Raw Showdown session, messages, protocol, debug boundary
 ├── drivers/        # Temporary random/scripted drivers and lifecycle harness
-├── fixtures/       # Fixture definitions, capture, paths, and verification
+├── goldens/        # Golden definitions, capture, paths, and verification
+├── translator/     # Per-player request parsing and decision/wait events
 ├── verification/   # Executable simulator checks
 └── main.ts         # Future application entry point
 ```
@@ -80,8 +103,8 @@ error    { battleId, seq, code, message, player? }
 ```
 
 Those contracts live in `simulator/src/core/simulator-messages.ts`, which imports
-nothing, so a later translator can depend on them without pulling in the
-simulator. The session never parses `|request|` payloads, tracks no battle
+nothing, so the translator depends on them without pulling in the simulator.
+The session never parses `|request|` payloads, tracks no battle
 state, derives no legal actions, and knows nothing about rewards, models, or
 transports; the only protocol line it inspects is the terminal `|win|`/`|tie`
 line. Illegal choices are written through unexamined and Showdown's `|error|`
@@ -101,16 +124,43 @@ driver queue, and keeps the Step 3 and Step 4 results unchanged.
 npm run verify:battle-session  # lifecycle states, close/EOF, ordering, isolation
 ```
 
-## Protocol Fixtures
+## Player Protocol Translator
 
-`fixtures/` holds real, perspective-specific request/protocol captures produced
-by the pinned simulator. See [fixtures/README.md](fixtures/README.md) for the
+`PlayerProtocolTranslator` is permanently bound to one battle ID and one side.
+It accepts only that side's `ChunkOutput`, ignores ordinary protocol lines, and
+classifies valid `|request|` payloads as Team Preview, move, forced switch,
+Revival Blessing, or wait events. Decision IDs are local and monotonic; wait
+events allocate no ID. Parsed payloads are preserved for later observation and
+action layers.
+
+The production translator imports only the raw simulator message contracts and
+its sibling translator modules. Golden replay remains verification-only and
+opens one `p1.jsonl` or `p2.jsonl` at a time; omniscient files are rejected.
+
+```bash
+npm run verify:translator
+```
+
+The translator output is currently an internal TypeScript contract:
+
+```text
+decision { battleId, player, decisionId, requestKind, payload }
+wait     { battleId, player, payload }
+```
+
+The next planned layer defines the complete player observation schema. Action
+indices and conversion back to raw Showdown commands remain Step 8 work.
+
+## Protocol Goldens
+
+`goldens/` holds real, perspective-specific request/protocol captures produced
+by the pinned simulator. See [goldens/README.md](goldens/README.md) for the
 file format and the p1/p2/omniscient perspective isolation rule that all later
 consumers must follow.
 
 ```bash
-npm run fixtures:verify   # routine: regenerate into artifacts/ and byte-compare
-npm run fixtures:capture  # deliberate: rewrite fixtures/ from the frozen manifest
+npm run goldens:verify   # routine: regenerate into artifacts/ and byte-compare
+npm run goldens:capture  # deliberate: rewrite goldens/ from the frozen manifest
 ```
 
 ## Local Toolchain Versions
@@ -142,7 +192,8 @@ npm run verify:showdown
 npm run verify:seeded-battle
 npm run verify:scripted-error
 npm run verify:battle-session
-npm run fixtures:verify
+npm run verify:translator
+npm run goldens:verify
 
 .venv/bin/python -m pytest
 ```

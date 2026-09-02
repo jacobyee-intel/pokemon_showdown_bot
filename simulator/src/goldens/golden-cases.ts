@@ -1,8 +1,8 @@
 /**
- * The frozen manifest of every protocol fixture case.
+ * The frozen manifest of every protocol golden case.
  *
- * This is the single source of truth for both `capture-fixtures.ts` and
- * `verify-fixtures.ts`. Every field here is static: it is the exact content
+ * This is the single source of truth for both `capture-goldens.ts` and
+ * `verify-goldens.ts`. Every field here is static: it is the exact content
  * that becomes each `meta.json`, plus everything needed to rerun the case.
  * Nothing in this file may depend on wall-clock time, hostnames, absolute
  * paths, or process state.
@@ -12,9 +12,9 @@
  */
 import type { ShowdownPokemonSet } from "../core/showdown";
 
-export type FixtureCategory = "natural-random-search" | "custom-scripted" | "forced-terminal";
+export type GoldenCategory = "natural-random-search" | "custom-scripted" | "forced-terminal";
 
-export interface RandomFixturePlayerSpec {
+export interface RandomGoldenPlayerSpec {
   kind: "random";
   name: string;
   /**
@@ -25,7 +25,7 @@ export interface RandomFixturePlayerSpec {
   move: number;
 }
 
-export interface ScriptedFixturePlayerSpec {
+export interface ScriptedGoldenPlayerSpec {
   kind: "scripted";
   name: string;
   team: ShowdownPokemonSet[];
@@ -39,16 +39,16 @@ export interface ScriptedFixturePlayerSpec {
   allowUnansweredRequests?: boolean;
 }
 
-export type FixturePlayerSpec = RandomFixturePlayerSpec | ScriptedFixturePlayerSpec;
+export type GoldenPlayerSpec = RandomGoldenPlayerSpec | ScriptedGoldenPlayerSpec;
 
-export interface FixtureCaseSpec {
+export interface GoldenCaseSpec {
   caseId: string;
-  category: FixtureCategory;
+  category: GoldenCategory;
   formatId: "gen9randombattle" | "gen9customgame";
   /** Derives the battle, team, and agent seeds. Mandatory for every case. */
   masterSeed: number;
-  p1: FixturePlayerSpec;
-  p2: FixturePlayerSpec;
+  p1: GoldenPlayerSpec;
+  p2: GoldenPlayerSpec;
   /** Raw omniscient commands written right after the `>start`/`>player` block. */
   postStartCommands?: string[];
   /** Frozen, human-authored map of what this case demonstrates, by turn. */
@@ -88,7 +88,7 @@ function set(
 
 const INCREASING_MASTER_SEED_SEARCH = { strategy: "increasing-master-seed", start: 1, step: 1 };
 
-export const FIXTURE_CASES: readonly FixtureCaseSpec[] = [
+export const GOLDEN_CASES: readonly GoldenCaseSpec[] = [
   {
     caseId: "ordinary-battle",
     category: "natural-random-search",

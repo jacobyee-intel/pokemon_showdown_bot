@@ -14,8 +14,9 @@
     "verify:seeded-battle": "npm run build && node simulator/dist/verification/verify-seeded-battle.js",
     "verify:scripted-error": "npm run build && node simulator/dist/verification/verify-scripted-error.js",
     "verify:battle-session": "npm run build && node simulator/dist/verification/verify-battle-session.js",
-    "fixtures:capture": "npm run build && node simulator/dist/fixtures/capture-fixtures.js",
-    "fixtures:verify": "npm run build && node simulator/dist/fixtures/verify-fixtures.js"
+    "verify:translator": "npm run build && node simulator/dist/verification/verify-player-protocol-translator.js",
+    "goldens:capture": "npm run build && node simulator/dist/goldens/capture-goldens.js",
+    "goldens:verify": "npm run build && node simulator/dist/goldens/verify-goldens.js"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

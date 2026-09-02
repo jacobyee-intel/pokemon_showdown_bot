@@ -1,12 +1,12 @@
-# Step 4: Capture Protocol Fixtures
+# Step 4: Capture Protocol Goldens
 
 ## Objective
 
-Capture real, perspective-specific request/protocol fixtures from the pinned
+Capture real, perspective-specific request/protocol goldens from the pinned
 `pokemon-showdown@0.11.11` simulator, for use by later schema, action-adapter,
-and state-tracker tests. Fixtures must be produced only by running the actual
+and state-tracker tests. Goldens must be produced only by running the actual
 simulator through Step 3's lifecycle; none may be hand-written, hand-edited,
-or manually simplified. This step only captures and verifies fixtures. It
+or manually simplified. This step only captures and verifies goldens. It
 does not define the observation schema, the 14-action adapter, or the
 perspective-safe state tracker.
 
@@ -47,7 +47,7 @@ steps share one lifecycle core:
     does for its own result parsing.
   - `postStartCommands?: string[]` containing raw omniscient commands written
     immediately after the `>start`/`>player` block. Record these commands in
-    fixture provenance. This supports controlled commands such as
+    golden provenance. This supports controlled commands such as
     `>forcetie` and `>editbattle pp ...`.
 - `showdown.ts` gains only what this shared lifecycle and the scripted player
   need beyond Step 3's additions. Derive the custom-team element type from
@@ -85,10 +85,10 @@ from a fixed, ordered list of choice strings:
   because its recorded omniscient command ends the battle before a player
   decision is required.
 
-## Fixture Directory Layout
+## Golden Directory Layout
 
 ```text
-fixtures/
+goldens/
 ├── README.md
 ├── gen9randombattle/
 │   ├── ordinary-battle/
@@ -104,15 +104,15 @@ fixtures/
     └── forced-tie-terminal/    (same four files)
 ```
 
-`fixtures/` is a new top-level, version-controlled directory, a sibling of
+`goldens/` is a new top-level, version-controlled directory, a sibling of
 `schemas/`, because these are cross-language test contracts consumed by
 future TypeScript and Python work, not a generated training artifact; it must
 not live under `artifacts/` and must not be gitignored.
 
-Use one `ordinary-battle` fixture to demonstrate ordinary moves, forced
+Use one `ordinary-battle` golden to demonstrate ordinary moves, forced
 switches, wait requests, faints, and a win. Record a deterministic list of
 named demonstration locations in its metadata rather than duplicating the
-same complete logs across five directories. Use separate fixtures only for
+same complete logs across five directories. Use separate goldens only for
 voluntary switching, scripted Terastallization, and the targeted rare cases.
 
 ## Provenance
@@ -155,8 +155,8 @@ across regenerations of the same case.
 
 ## Recorder Design
 
-Add `simulator/src/fixtures/fixture-recorder.ts` exporting a function such as
-`captureFixture(caseSpec, outputRoot): CapturedFixture` that:
+Add `simulator/src/goldens/golden-recorder.ts` exporting a function such as
+`captureGolden(caseSpec, outputRoot): CapturedGolden` that:
 
 1. Calls the shared `runBattleLifecycle` from `battle-lifecycle.ts` with an
    `onChunk` observer and an explicit output root.
@@ -181,7 +181,7 @@ a second reader would steal private `|request|` chunks from the player.
 
 ## Stable Normalization
 
-To make byte comparison meaningful, every fixture file must be produced the
+To make byte comparison meaningful, every golden file must be produced the
 same way regardless of how Showdown happened to batch protocol lines into
 stream chunks:
 
@@ -215,30 +215,30 @@ simulator/
     ├── drivers/
     │   ├── battle-lifecycle.ts # shared runner core (Step 3 extraction)
     │   └── scripted-player.ts  # fixed-choice deterministic player
-    └── fixtures/
-        ├── fixture-recorder.ts # chunk capture + normalization + file I/O
-        ├── fixture-cases.ts    # frozen manifest of all cases below
-        ├── capture-fixtures.ts # executable: writes fixtures/** from manifest
-        └── verify-fixtures.ts  # executable: regenerate + byte-compare
+    └── goldens/
+        ├── golden-recorder.ts # chunk capture + normalization + file I/O
+        ├── golden-cases.ts    # frozen manifest of all cases below
+        ├── capture-goldens.ts # executable: writes goldens/** from manifest
+        └── verify-goldens.ts  # executable: regenerate + byte-compare
 ```
 
-- `fixture-cases.ts` exports the full, frozen list of case specifications
+- `golden-cases.ts` exports the full, frozen list of case specifications
   (the exact content that becomes each `meta.json`, plus enough to rerun the
   case: master seed or scripted team/choices). This is the single source of
-  truth; `capture-fixtures.ts` and `verify-fixtures.ts` both read it.
-- `capture-fixtures.ts` is the only program allowed to write into `fixtures/`.
+  truth; `capture-goldens.ts` and `verify-goldens.ts` both read it.
+- `capture-goldens.ts` is the only program allowed to write into `goldens/`.
   It is run deliberately by a developer only when adding a new case or
   intentionally changing an existing one (for example, after an approved
   Pokemon Showdown version upgrade). It must not run as part of routine
   verification.
-- `verify-fixtures.ts` regenerates every case from `fixture-cases.ts` into a
+- `verify-goldens.ts` regenerates every case from `golden-cases.ts` into a
   scratch directory under `artifacts/` (already gitignored per Step 1), then
   byte-compares each regenerated file against the corresponding checked-in
-  file under `fixtures/`. On any missing case, missing file, or byte
+  file under `goldens/`. On any missing case, missing file, or byte
   mismatch, it prints the case ID and file path and exits nonzero. On success,
   it prints one summary line with the number of cases and files verified.
-- Running `verify-fixtures.ts` twice in a row, and running it against a
-  freshly captured `fixtures/` tree, must produce identical scratch output
+- Running `verify-goldens.ts` twice in a row, and running it against a
+  freshly captured `goldens/` tree, must produce identical scratch output
   each time; this is the same double-run determinism discipline as Step 3,
   applied to every case instead of a single battle.
 - Both executables set `process.exitCode = 1` at startup and set it to `0`
@@ -253,14 +253,14 @@ routes to that side: its own redacted public log lines plus its own private
 (channel `-1`) and never contains any side's `|request|` line, since
 `getPlayerStreams` never routes `sideupdate` data to the omniscient stream.
 
-Add `fixtures/README.md` stating explicitly, for consumers of this directory
+Add `goldens/README.md` stating explicitly, for consumers of this directory
 in later steps:
 
 - Any future agent, action adapter, or state tracker must be built and
   tested using only `p1.jsonl` (from `p1`'s own perspective) or only
   `p2.jsonl` (from `p2`'s own perspective), never both, and never
   `omniscient.jsonl`.
-- `omniscient.jsonl` exists only for fixture provenance, debugging, and
+- `omniscient.jsonl` exists only for golden provenance, debugging, and
   terminal-result parsing (as already established in Step 3); it must never
   be read by anything that represents what a real player-side agent knows.
 - Tests that need to assert facts about the "true" battle state for grading
@@ -279,18 +279,18 @@ in later steps:
 | `forced-tie-terminal` | gen9customgame | forced-terminal | Uses a recorded `>forcetie` omniscient command to end the battle, solely to exercise `|tie` terminal-line parsing. Documented in `meta.json` as not a substitute for a natural simultaneous-KO tie. |
 
 A natural simultaneous-KO tie is best-effort and explicitly out of scope for
-this step (see below); `forced-tie-terminal` is the only tie fixture this
+this step (see below); `forced-tie-terminal` is the only tie golden this
 step guarantees.
 
 ## Error Propagation
 
-- `captureFixture` must propagate any lifecycle error (invalid seed,
+- `captureGolden` must propagate any lifecycle error (invalid seed,
   rethrown `RandomPlayerAI` error, an exhausted or stalled scripted-choice
   list, an unparsed terminal line) rather than writing partial or placeholder
-  fixture files.
-- `capture-fixtures.ts` must stop at the first failing case and report which
+  golden files.
+- `capture-goldens.ts` must stop at the first failing case and report which
   case failed, rather than writing some cases and silently skipping others.
-- `verify-fixtures.ts` must report every mismatching case and file (not just
+- `verify-goldens.ts` must report every mismatching case and file (not just
   the first) before exiting nonzero, so a regression is fully visible in one
   run.
 
@@ -301,49 +301,49 @@ Add to `package.json`:
 ```json
 {
   "scripts": {
-    "fixtures:capture": "npm run build && node simulator/dist/fixtures/capture-fixtures.js",
-    "fixtures:verify": "npm run build && node simulator/dist/fixtures/verify-fixtures.js"
+    "goldens:capture": "npm run build && node simulator/dist/goldens/capture-goldens.js",
+    "goldens:verify": "npm run build && node simulator/dist/goldens/verify-goldens.js"
   }
 }
 ```
 
 Keep `build`, `typecheck`, `verify:showdown`, and `verify:seeded-battle`
-unchanged. `fixtures:verify`, not `fixtures:capture`, is the command run
-routinely; `fixtures:capture` is only for deliberately adding or updating a
+unchanged. `goldens:verify`, not `goldens:capture`, is the command run
+routinely; `goldens:capture` is only for deliberately adding or updating a
 case.
 
 ## Explicitly Out of Scope
 
 - The observation schema, the 14-action adapter, and the perspective-safe
-  state tracker; fixtures only supply their future test inputs.
-- Any test framework (Jest/Vitest/pytest assertions against fixture
-  contents); this step only captures and byte-verifies fixtures, it does not
+  state tracker; goldens only supply their future test inputs.
+- Any test framework (Jest/Vitest/pytest assertions against golden
+  contents); this step only captures and byte-verifies goldens, it does not
   write the schema/action/state tests that will consume them.
-- Python reading, encoding, or validating any fixture.
-- A natural simultaneous-KO tie fixture; only the forced-terminal tie is
+- Python reading, encoding, or validating any golden.
+- A natural simultaneous-KO tie golden; only the forced-terminal tie is
   guaranteed. If later steps require true double-faint tie semantics, that
   must be revisited explicitly rather than assumed to be covered here.
 - Exhaustive coverage of all Gen 9 mechanics, items, abilities, or formats;
   only the specific cases listed above.
 - Multi-battle, free-for-all, or any format other than `gen9randombattle`
   and `gen9customgame`.
-- Performance tuning or parallel fixture capture.
+- Performance tuning or parallel golden capture.
 - Vendoring or modifying Pokemon Showdown.
 
 ## Completion Criteria
 
-1. Every case in the case matrix exists under `fixtures/` with `meta.json`,
+1. Every case in the case matrix exists under `goldens/` with `meta.json`,
    `p1.jsonl`, `p2.jsonl`, and `omniscient.jsonl`.
-2. `npm run fixtures:verify` regenerates every case and reports byte-identical
-   output against the checked-in `fixtures/` tree, exiting successfully.
-3. Running `npm run fixtures:verify` twice in immediate succession produces
+2. `npm run goldens:verify` regenerates every case and reports byte-identical
+   output against the checked-in `goldens/` tree, exiting successfully.
+3. Running `npm run goldens:verify` twice in immediate succession produces
    identical pass/fail results and identical regenerated bytes both times.
 4. Every request line preserved in `p1.jsonl`/`p2.jsonl` is the simulator's
    original, un-reparsed `|request|<json>` text; none were constructed,
    trimmed, or simplified by hand.
-5. Every `p1.jsonl` and `p2.jsonl` fixture that reaches a player decision
+5. Every `p1.jsonl` and `p2.jsonl` golden that reaches a player decision
    contains at least one original `|request|` line.
-6. `fixtures/README.md` states the p1/p2/omniscient isolation rule, and no
+6. `goldens/README.md` states the p1/p2/omniscient isolation rule, and no
    code added in this step reads `omniscient.jsonl` for any purpose other
    than provenance, debugging, or terminal-result parsing.
 7. All Showdown imports, including any newly needed internal paths, remain

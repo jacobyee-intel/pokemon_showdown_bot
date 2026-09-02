@@ -1,4 +1,4 @@
-# Protocol Fixtures
+# Protocol Goldens
 
 Real, perspective-specific request/protocol captures from the pinned
 `pokemon-showdown@0.11.11` simulator. Every file here was produced by running
@@ -10,6 +10,11 @@ These are cross-language test contracts for later TypeScript and Python work,
 not generated training artifacts, which is why they are version-controlled here
 as a sibling of `schemas/` rather than under the gitignored `artifacts/`.
 
+The current `PlayerProtocolTranslator` verification replays every `p1.jsonl`
+and `p2.jsonl` independently. It uses the player streams to validate request
+parsing, classification, wait handling, decision identities, and independence
+from chunk boundaries. Translator code never reads `omniscient.jsonl`.
+
 ## Perspective Isolation Rule
 
 **This is the rule consumers of this directory must follow.**
@@ -17,7 +22,7 @@ as a sibling of `schemas/` rather than under the gitignored `artifacts/`.
 - Any future agent, action adapter, or state tracker must be built and tested
   using only `p1.jsonl` (from `p1`'s own perspective) **or** only `p2.jsonl`
   (from `p2`'s own perspective) — never both, and never `omniscient.jsonl`.
-- `omniscient.jsonl` exists only for fixture provenance, debugging, and
+- `omniscient.jsonl` exists only for golden provenance, debugging, and
   terminal-result parsing. It must never be read by anything that represents
   what a real player-side agent knows.
 - Tests that need to assert facts about the "true" battle state for grading or
@@ -77,11 +82,14 @@ assumed to be covered by `forced-tie-terminal`.
 ## Regenerating
 
 ```bash
-npm run fixtures:verify   # routine: regenerate into artifacts/ and byte-compare
-npm run fixtures:capture  # deliberate: rewrite this directory from the manifest
+npm run goldens:verify   # routine: regenerate into artifacts/ and byte-compare
+npm run goldens:capture  # deliberate: rewrite this directory from the manifest
 ```
 
-`simulator/src/fixtures/fixture-cases.ts` is the frozen, single source of truth for every
-case. `capture-fixtures.ts` is the only program allowed to write here, and is
+`simulator/src/goldens/golden-cases.ts` is the frozen, single source of truth for every
+case. `capture-goldens.ts` is the only program allowed to write here, and is
 run only when adding a new case or intentionally changing an existing one (for
 example after an approved Pokemon Showdown version upgrade).
+
+Run `npm run verify:translator` to replay these goldens through the per-player
+request translator without starting a battle.

@@ -3,7 +3,7 @@
  *
  * A thin wrapper over the shared lifecycle in `battle-lifecycle.ts`: it derives
  * two `RandomPlayerAI` player specs from a single master seed and runs one
- * `gen9randombattle` entirely in memory. It contains no fixture-file logic and
+ * `gen9randombattle` entirely in memory. It contains no golden-file logic and
  * performs no file I/O.
  *
  * `RandomPlayerAI` is temporary smoke-test infrastructure. It must not be
